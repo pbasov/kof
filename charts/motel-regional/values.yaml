@@ -1,0 +1,45 @@
+global:
+  clusterLabel: clusterName
+  storageClass: ebs-csi-default-sc
+  clusterName: regional
+cert-manager:
+  enabled: true
+  email: mail@example.net
+victoriametrics:
+  enabled: true
+  vmauth:
+    enabled: true
+    credentials:
+      username: motel
+      password: motel
+    ingress:
+      host: vmauth.hmc0.example.net
+  vmcluster:
+    enabled: true
+  vmalert:
+    enabled: true
+  vmagent:
+    enabled: false
+grafana:
+  enabled: true
+  datasource:
+    url: http://vmselect-cluster:8481/select/0/prometheus
+  alerts:
+    enabled: true
+  security:
+    admin_user: motel
+    admin_password: motel
+  ingress:
+    host: grafana.hmc0.example.net
+victoria-metrics-operator:
+  enabled: true
+  crds:
+    plain: true
+victoria-logs-single:
+  enabled: true
+  server:
+    persistentVolume:
+      enabled: true
+      storageClassName: ebs-csi-default-sc
+  fluent-bit:
+    enabled: false
