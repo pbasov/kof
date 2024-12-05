@@ -7,7 +7,7 @@ metadata:
 spec:
   configMaps: []
   datasource:
-    url: http://vmselect-cluster.mon.svc:8481/select/0/prometheus
+    url: http://vmselect-cluster.{{ .Release.Namespace }}.svc:8481/select/0/prometheus
   evaluationInterval: 15s
   externalLabels: {}
   extraArgs:
@@ -17,11 +17,11 @@ spec:
     tag: v1.105.0
   license: {}
   notifiers:
-  - url: http://vmalertmanager-cluster-0.vmalertmanager-cluster.mon.svc:9093/
+  - url: http://vmalertmanager-cluster-0.vmalertmanager-cluster.{{ .Release.Namespace }}.svc:9093/
   port: "8080"
   remoteRead:
-    url: {{ .Values.victoriametrics.vmalert.remoteRead | default "http://vmselect-cluster.mon.svc:8481/select/0/prometheus" }} 
+    url: {{ .Values.victoriametrics.vmalert.remoteRead | default (printf "http://vmselect-cluster.%s.svc:8481/select/0/prometheus" .Release.Namespace) }} 
   remoteWrite:
-    url: http://vminsert-cluster.mon.svc:8480/insert/0/prometheus/api/v1/write
+    url: http://vminsert-cluster.{{ .Release.Namespace }}.svc:8480/insert/0/prometheus/api/v1/write
   selectAllByDefault: true
 {{- end }}
