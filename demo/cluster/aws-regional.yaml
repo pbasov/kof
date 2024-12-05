@@ -44,6 +44,6 @@ spec:
               password: motel
         grafana:
           ingress:
-            host: grafana.hmc0.weystrom.net
+            host: grafana.hmc0.example.net
         cert-manager:
-          email: mail@weystrom.net
+          email: mail@example.net
