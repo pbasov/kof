@@ -27,7 +27,8 @@ victoriametrics:
     remotePassword: motel
 fluent-bit:
   enabled: true
-  outputUrl: vmauth.hmc0.example.net
+  outputHost: vmauth.hmc0.example.net
+  outputURI: /vls/insert/jsonline
   outputUsername: motel
   outputPassword: motel
   args:

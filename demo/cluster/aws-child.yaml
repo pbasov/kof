@@ -33,6 +33,6 @@ spec:
             remotePassword: motel
         fluent-bit:
           enabled: true
-          outputUrl: vmauth.hmc0.example.net
+          outputHost: vmauth.hmc0.example.net
           outputUsername: motel
           outputPassword: motel

@@ -10,8 +10,8 @@ data:
     [OUTPUT]
       Name             http
       Match            kube.*
-      Host             {{ index .Values "fluent-bit" "outputUrl" }}
-      URI              /vls/insert/jsonline
+      Host             {{ index .Values "fluent-bit" "outputHost" }}
+      URI              {{ index .Values "fluent-bit" "outputURI" | default "/vls/insert/jsonline" }}
       port             443
       tls              on
       compress         gzip
