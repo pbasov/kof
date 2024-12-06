@@ -2,7 +2,7 @@
 apiVersion: hmc.mirantis.com/v1alpha1
 kind: ServiceTemplate
 metadata:
-  name: motel-regional-0-1-0
+  name: motel-regional-0-1-1
   namespace: hmc-system
 spec:
   helm:
@@ -11,6 +11,6 @@ spec:
       kind: HelmChart
       name: motel-regional
       namespace: hmc-system
-    chartVersion: 0.1.0
+    chartVersion: 0.1.1
   providers: []
 {{- end }}

@@ -9,7 +9,7 @@ metadata:
 spec:
   datasource:
     access: proxy
-    isDefault: true
+    isDefault: false
     jsonData:
       timeInterval: 5s
       tlsSkipVerify: true
