@@ -12,7 +12,7 @@ spec:
     name: promxy
     type: prometheus
     access: proxy
-    url: {{ .Values.grafana.promxyDatasourceUrl | quote | default (printf "http://%s-promxy:8082" .Release.Name) }}
+    url: {{ .Values.grafana.promxyDatasourceUrl | default (printf "http://%s-promxy:8082" .Release.Name) | quote }}
     isDefault: true
     jsonData:
       tlsSkipVerify: true

@@ -11,7 +11,7 @@ metadata:
     {{- if .Values.promxy.extraLabels}}
     {{ toYaml .Values.promxy.extraLabels | nindent 4 }}
     {{- end}}
-  name: {{ template "chart.fullname" . }}-promxy
+  name: {{ .Release.Name }}-promxy
   namespace: {{ .Release.Namespace }}
 spec:
 {{- if .Values.promxy.service.clusterIP }}
