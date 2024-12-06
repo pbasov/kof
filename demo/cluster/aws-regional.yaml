@@ -33,7 +33,7 @@ spec:
           enabled: true
     - name: motel-regional
       namespace: motel
-      template: motel-regional-0-1-0
+      template: motel-regional-0-1-1
       values: |
         victoriametrics:
           vmauth:
