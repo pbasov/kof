@@ -31,3 +31,8 @@ spec:
             remoteWriteUrl: https://vmauth.hmc0.example.net/vm/insert/0/prometheus/api/v1/write
             remoteUsername: motel
             remotePassword: motel
+        fluent-bit:
+          enabled: true
+          outputUrl: vmauth.hmc0.example.net
+          outputUsername: motel
+          outputPassword: motel
