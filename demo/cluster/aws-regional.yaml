@@ -27,13 +27,13 @@ spec:
       namespace: ingress-nginx
     - name: cert-manager
       namespace: cert-manager
-      template: cert-manager-1-16-1
+      template: cert-manager
       values: |
         crds:
           enabled: true
     - name: motel-regional
       namespace: motel
-      template: motel-regional-0-1-2
+      template: motel-regional
       values: |
         victoriametrics:
           vmauth:
