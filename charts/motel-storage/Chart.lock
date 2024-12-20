@@ -1,0 +1,15 @@
+dependencies:
+- name: grafana-operator
+  repository: oci://ghcr.io/grafana/helm-charts
+  version: v5.15.1
+- name: victoria-metrics-operator
+  repository: https://victoriametrics.github.io/helm-charts/
+  version: 0.40.2
+- name: victoria-logs-single
+  repository: https://victoriametrics.github.io/helm-charts/
+  version: 0.8.11
+- name: external-dns
+  repository: https://kubernetes-sigs.github.io/external-dns/
+  version: 1.15.0
+digest: sha256:244f062828bbc1d6c954b2c54955b6f974a5926dc3f4335fa8ba7a78a8516286
+generated: "2024-12-25T14:23:37.379566969+02:00"
