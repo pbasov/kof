@@ -4,8 +4,6 @@ $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
 
-HELM=helm
-YQ=yq
 TEMPLATES_DIR := charts
 PROVIDER_TEMPLATES_DIR := $(TEMPLATES_DIR)/provider
 export PROVIDER_TEMPLATES_DIR
@@ -140,4 +138,48 @@ dev-managed-deploy-aws: dev ## Deploy Regional Managed cluster using HMC
 	@$(YQ) eval -i '.motel.logs_endpoint = "https://vmauth.$(STORAGE_DOMAIN)/vls/insert/opentelemetry/v1/logs"' dev/motel-managed-values.yaml
 	@$(YQ) eval -i '.motel.metrics_endpoint = "https://vmauth.$(STORAGE_DOMAIN)/vm/insert/0/prometheus/api/v1/write"' dev/motel-managed-values.yaml
 	@$(YQ) eval -i '(.spec.services[] | select(.name == "motel-collectors")).values |= load_str("dev/motel-managed-values.yaml")' dev/aws-managed.yaml
-	#kubectl apply -f dev/aws-managed.yaml
+	kubectl apply -f dev/aws-managed.yaml
+
+## Tool Binaries
+KUBECTL ?= kubectl
+CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen-$(CONTROLLER_TOOLS_VERSION)
+ENVTEST ?= $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
+GOLANGCI_LINT = $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
+HELM ?= $(LOCALBIN)/helm-$(HELM_VERSION)
+export HELM
+KIND ?= $(LOCALBIN)/kind-$(KIND_VERSION)
+YQ ?= $(LOCALBIN)/yq-$(YQ_VERSION)
+export YQ
+
+## Tool Versions
+HELM_VERSION ?= v3.15.1
+YQ_VERSION ?= v4.44.2
+
+.PHONY: yq
+yq: $(YQ) ## Download yq locally if necessary.
+$(YQ): | $(LOCALBIN)
+	$(call go-install-tool,$(YQ),github.com/mikefarah/yq/v4,${YQ_VERSION})
+
+.PHONY: helm
+helm: $(HELM) ## Download helm locally if necessary.
+HELM_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3"
+$(HELM): | $(LOCALBIN)
+	rm -f $(LOCALBIN)/helm-*
+	curl -s --fail $(HELM_INSTALL_SCRIPT) | USE_SUDO=false HELM_INSTALL_DIR=$(LOCALBIN) DESIRED_VERSION=$(HELM_VERSION) BINARY_NAME=helm-$(HELM_VERSION) PATH="$(LOCALBIN):$(PATH)" bash
+
+.PHONY: cli-install
+cli-install: yq helm ## Install the necessary CLI tools for deployment, development and testing.
+
+# go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
+# $1 - target path with name of binary (ideally with version)
+# $2 - package url which can be installed
+# $3 - specific version of package
+define go-install-tool
+@[ -f $(1) ] || { \
+set -e; \
+package=$(2)@$(3) ;\
+echo "Downloading $${package}" ;\
+GOBIN=$(LOCALBIN) go install $${package} ;\
+if [ ! -f $(1) ]; then mv -f "$$(echo "$(1)" | sed "s/-$(3)$$//")" $(1); fi ;\
+}
+endef
