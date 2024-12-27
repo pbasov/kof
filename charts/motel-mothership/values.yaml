@@ -91,7 +91,7 @@ promxy:
       memory: 128Mi
   extraArgs:
     log-level: "info"
-  configMap: ""
+  secret: ""
   config:
     remoteWriteUrl: http://vminsert-cluster:8480/insert/0/prometheus/api/v1/write
     serverGroups:

@@ -63,11 +63,11 @@ Create the name of the service account to use
 {{- end -}}
 
 {{/*
-Defins the name of configmap
+Defins the name of secret
 */}}
-{{- define "chart.configname" -}}
-{{- if .Values.promxy.configMap -}}
-{{- .Values.promxy.configMap -}}
+{{- define "chart.secretname" -}}
+{{- if .Values.promxy.secret -}}
+{{- .Values.promxy.secret -}}
 {{- else -}}
 {{- include "chart.fullname" . -}}-promxy-config
 {{- end -}}
