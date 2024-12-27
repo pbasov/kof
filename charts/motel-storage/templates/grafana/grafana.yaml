@@ -41,7 +41,6 @@ spec:
                   tar -xf /var/lib/grafana/plugins/vl-plugin.tar.gz -C /var/lib/grafana/plugins/
                   tar -xf /var/lib/grafana/plugins/vm-plugin.tar.gz -C /var/lib/grafana/plugins/
                   rm /var/lib/grafana/plugins/vm-plugin.tar.gz
-                  rm /var/lib/grafana/plugins/vl-plugin.tar.gz
               volumeMounts:
                 - name: grafana-data
                   mountPath: /var/lib/grafana
@@ -55,6 +54,7 @@ spec:
     security:
       admin_user: {{ .Values.grafana.security.admin_user | quote }}
       admin_password: {{ .Values.grafana.security.admin_password | quote }}
+{{- if .Values.grafana.ingress.enabled }}
   ingress:
     metadata:
       annotations:
@@ -77,4 +77,5 @@ spec:
         - hosts:
             - {{ .Values.grafana.ingress.host | quote }}
           secretName: grafana-cluster-tls
+{{- end }}
 {{- end }}

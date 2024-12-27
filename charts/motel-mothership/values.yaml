@@ -4,8 +4,21 @@ global:
   clusterName: mothership
 hmc:
   installTemplates: false
+  motel:
+    repo:
+      name: motel
+      url: https://mirantis.github.io/motel/
+      insecure: false
+      type: "default"
+    charts:
+      operators:
+        version: 0.0.1
+      collectors:
+        version: 0.0.1
+      storage:
+        version: 0.1.2
 victoriametrics:
-  enabled: enabled
+  enabled: true
   vmcluster:
     enabled: true
     replicationFactor: 1
@@ -20,20 +33,19 @@ grafana:
     host: grafana.example.net
   alerts:
     enabled: true
-  promxyDatasourceUrl:
   logSources:
-  - name: hmc0-logs
-    url: https://vmauth.hmc0.example.net/vls
-    type: victorialogs-datasource
-    auth:
-      username: motel
-      password: motel
-  - name: hmc1-logs
-    url: https://vmauth.hmc1.example.net/vls
-    type: victorialogs-datasource
-    auth:
-      username: motel
-      password: motel
+    - name: hmc0-logs
+      url: https://vmauth.hmc0.example.net/vls
+      type: victoriametrics-logs-datasource
+      auth:
+        username: motel
+        password: motel
+    - name: hmc1-logs
+      url: https://vmauth.hmc1.example.net/vls
+      type: victoriametrics-logs-datasource
+      auth:
+        username: motel
+        password: motel
   security:
     admin_user: motel
     admin_password: motel
@@ -43,8 +55,7 @@ victoria-metrics-operator:
     plain: true
 promxy:
   replicaCount: 1
-  deployment:
-    enabled: true
+  enabled: true
   image:
     repository: quay.io/jacksontj/promxy
     tag: "latest"
