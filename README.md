@@ -10,10 +10,26 @@ This repo contains 4 charts to deploy a monitoring stack using HMC and get metri
 
 ### Demo deployment
 In `demo/demo-mothership-values.yaml` set your target ingress names that you are going to use for your regional clusters, but they can always be changed after the fact
+
+Create secrets for grafana admin user and storage clusters datasources endpoint access. By default the secret below be reused everywhere, but it is customizable.
+
+```yaml
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: grafana-admin-credentials
+  namespace: motel
+stringData:
+  GF_SECURITY_ADMIN_USER: username # Grafana username
+  GF_SECURITY_ADMIN_PASSWORD: password # Grafana password
+type: Opaque
 ```
+
+```bash
 helm repo add motel https://mirantis.github.io/motel/
 helm repo update
-helm upgrade -i motel motel/motel-mothership -n hmc-system -f demo/demo-mothership-values.yaml
+helm upgrade -i motel motel/motel-mothership -n motel -f demo/demo-mothership-values.yaml
 ```
 
 ## Storage chart
@@ -28,13 +44,15 @@ helm upgrade -i motel motel/motel-mothership -n hmc-system -f demo/demo-mothersh
 
 To deploy storage `managedcluster` configure desired ingress names for vmauth and regional Grafana in it's values for the `motel-storage` template.
 `demo/cluster/aws-storage.yaml` contains example definitions
-```
+
+```bash
 kubectl apply -f demo/cluster/aws-storage.yaml
 # you can check helm chart deployment status using ClusterSummary object:
 kubectl get clustersummaries.config.projectsveltos.io -n hmc-system
 ```
 Once the storage managedcluster is ready - retrieve its kubeconfig and get loadbalancer IP/DNS name for your ingress-nginx service.
-```
+
+```bash
 kubectl get secret -n hmc-system aws-storage-kubeconfig -o jsonpath={.data.value} | base64 -d  > /tmp/hmc-aws-storage-kubeconfig.yaml
 export KUBECONFIG=/tmp/hmc-aws-storage-kubeconfig.yaml
 kubectl get svc -n ingress-nginx ingress-nginx-controller

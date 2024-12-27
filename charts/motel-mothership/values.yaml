@@ -38,17 +38,14 @@ grafana:
       url: https://vmauth.hmc0.example.net/vls
       type: victoriametrics-logs-datasource
       auth:
-        username: motel
-        password: motel
+        credentials_secret_name: grafana-admin-credentials
     - name: hmc1-logs
       url: https://vmauth.hmc1.example.net/vls
       type: victoriametrics-logs-datasource
       auth:
-        username: motel
-        password: motel
+        credentials_secret_name: grafana-admin-credentials
   security:
-    admin_user: motel
-    admin_password: motel
+    credentials_secret_name: grafana-admin-credentials
 victoria-metrics-operator:
   enabled: true
   crds:
@@ -102,11 +99,9 @@ promxy:
         targets:
           - vmauth.hmc0.example.net:443
         auth:
-          username: motel
-          password: motel
+          credentials_secret_name: grafana-admin-credentials
       - clusterName: hmc1
         targets:
           - vmauth.hmc1.example.net:443
         auth:
-          username: motel
-          password: motel
+          credentials_secret_name: grafana-admin-credentials

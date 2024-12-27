@@ -28,8 +28,7 @@ grafana:
         username: motel
         password: motel
   security:
-    admin_user: motel
-    admin_password: motel
+    credentials_secret_name: grafana-admin-credentials
 victoria-metrics-operator:
   enabled: true
   crds:
@@ -86,4 +85,3 @@ promxy:
         auth:
           username: motel
           password: motel
-

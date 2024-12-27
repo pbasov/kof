@@ -46,15 +46,26 @@ spec:
                 - name: grafana-data
                   mountPath: /var/lib/grafana
           volumes:
-          - name: grafana-data
-            persistentVolumeClaim:
-              claimName: grafana-vm-pvc
+            - name: grafana-data
+              persistentVolumeClaim:
+                claimName: grafana-vm-pvc
+          containers:
+            - name: grafana
+              env:
+                - name: GF_SECURITY_ADMIN_USER
+                  valueFrom:
+                    secretKeyRef:
+                      key: GF_SECURITY_ADMIN_USER
+                      name: {{ .Values.grafana.security.credentials_secret_name }}
+                - name: GF_SECURITY_ADMIN_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      key: GF_SECURITY_ADMIN_PASSWORD
+                      name: {{ .Values.grafana.security.credentials_secret_name }}
   config:
     plugins:
       allow_loading_unsigned_plugins: victoriametrics-datasource,victoriametrics-logs-datasource
-    security:
-      admin_user: {{ .Values.grafana.security.admin_user | quote }}
-      admin_password: {{ .Values.grafana.security.admin_password | quote }}
+      
   ingress:
     metadata:
       annotations:

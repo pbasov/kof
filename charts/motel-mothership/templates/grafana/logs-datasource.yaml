@@ -8,6 +8,17 @@ metadata:
   name: {{ .name }}
   namespace: {{ $.Release.Namespace }}
 spec:
+  valuesFrom:
+    - targetPath: "basicAuthUser"
+      valueFrom:
+        secretKeyRef:
+          key: {{ .auth.username_key | default "GF_SECURITY_ADMIN_USER" }}
+          name: {{ .auth.credentials_secret_name }}
+    - targetPath: "secureJsonData.basicAuthPassword"
+      valueFrom:
+        secretKeyRef:
+          key: {{ .auth.password_key | default "GF_SECURITY_ADMIN_PASSWORD" }}
+          name: {{ .auth.credentials_secret_name }}
   datasource:
     access: proxy
     isDefault: false
@@ -15,9 +26,6 @@ spec:
     type: {{ .type | default "victoriametrics-logs-datasource" }}
     url: {{ .url }}
     basicAuth: true
-    basicAuthUser: {{ .auth.username | quote }}
-    secureJsonData:
-      basicAuthPassword: {{ .auth.password | quote }}
   instanceSelector:
     matchLabels:
       dashboards: grafana

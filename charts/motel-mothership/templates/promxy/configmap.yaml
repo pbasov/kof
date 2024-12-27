@@ -32,8 +32,9 @@ data:
             tls_config:
               insecure_skip_verify: true
             basic_auth:
-              username: {{ .auth.username | quote }}
-              password: {{ .auth.password | quote }}
+{{- $secret := (lookup "v1" "Secret" $.Release.Namespace .auth.credentials_secret_name) }}
+              username: {{ index $secret.data (.auth.username_key | default "GF_SECURITY_ADMIN_USER") | quote }}
+              password: {{ index $secret.data (.auth.password_key | default "GF_SECURITY_ADMIN_PASSWORD") | quote }}
           labels:
             promxyCluster: {{ .clusterName | quote }}
         {{- end }}

@@ -103,8 +103,8 @@ dev-storage-deploy: dev ## Deploy motel-storage helm chart to the K8s cluster sp
 dev-ms-deploy-aws: dev ## Deploy Mothership helm chart to the K8s cluster specified in ~/.kube/config for a remote storage cluster
 	cp -f $(TEMPLATES_DIR)/motel-mothership/values.yaml dev/mothership-values.yaml
 	@$(YQ) eval -i '.hmc.installTemplates = true' dev/mothership-values.yaml
-	@$(YQ) eval -i '.grafana.logSources = [{"name": "$(USER)-storage", "url": "https://vmauth.$(STORAGE_DOMAIN)/vls", "type": "victoriametrics-logs-datasource", "auth": {"username": "motel", "password": "motel"} }]' dev/mothership-values.yaml
-	@$(YQ) eval -i '.promxy.config.serverGroups = [{"clusterName": "$(USER)-storage", "targets": ["vmauth.$(STORAGE_DOMAIN):443"], "auth": {"username": "motel", "password": "motel"}}]' dev/mothership-values.yaml
+	@$(YQ) eval -i '.grafana.logSources = [{"name": "$(USER)-storage", "url": "https://vmauth.$(STORAGE_DOMAIN)/vls", "type": "victoriametrics-logs-datasource", "auth": {"credentials_secret_name": "grafana-admin-credentials"}}]' dev/mothership-values.yaml
+	@$(YQ) eval -i '.promxy.config.serverGroups = [{"clusterName": "$(USER)-storage", "targets": ["vmauth.$(STORAGE_DOMAIN):443"], "auth": {"credentials_secret_name": "grafana-admin-credentials"}}]' dev/mothership-values.yaml
 
 	@$(YQ) eval -i '.hmc.motel.charts.collectors.version = "$(COLLECTORS_VERSION)"' dev/mothership-values.yaml
 	@$(YQ) eval -i '.hmc.motel.charts.storage.version = "$(STORAGE_VERSION)"' dev/mothership-values.yaml
