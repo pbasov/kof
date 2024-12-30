@@ -39,11 +39,13 @@ spec:
           vmauth:
             ingress:
               host: vmauth.storage0.example.net
-            credentials:
-              username: motel
-              password: motel
+          security:
+            password_secret_name: grafana-admin-credentials
+            password_key: "GF_SECURITY_ADMIN_PASSWORD"
         grafana:
           ingress:
             host: grafana.storage0.example.net
+          security:
+            credentials_secret_name: grafana-admin-credentials
         cert-manager:
           email: mail@example.net

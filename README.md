@@ -58,6 +58,8 @@ export KUBECONFIG=/tmp/hmc-aws-storage-kubeconfig.yaml
 kubectl get svc -n ingress-nginx ingress-nginx-controller
 ```
 
+Create secrets for grafana and vmauth according to the names provided in helm values.
+
 With your preffered DNS hosting, set your ingress domains to resolve to that IP/DNS name, that's how the traffic will flow to/from regional cluster. 
 To simplify this process it is posssible to enable [external-dns](https://kubernetes-sigs.github.io/external-dns/) helm chart deployment in values.
 
