@@ -128,28 +128,26 @@ spec:
       batch: {}
 
     extensions:
-      basicauth/client:
-        client_auth:
-          username: motel
-          password: motel
+      {{- include "basic_auth_extensions" . | nindent 6 }}
 
     exporters:
       prometheusremotewrite:
-        endpoint: {{ .Values.motel.metrics_endpoint }}
+        endpoint: {{ .Values.motel.metrics.endpoint }}
         tls:
           insecure: true
         auth:
-          authenticator: basicauth/client
+          authenticator: basicauth/metrics
       otlphttp:
         auth:
-          authenticator: basicauth/client
-        logs_endpoint: {{ .Values.motel.logs_endpoint }}
+          authenticator: basicauth/logs
+        logs_endpoint: {{ .Values.motel.logs.endpoint }}
       debug:
         verbosity: detailed
 
     service:
       extensions:
-        - basicauth/client
+        - basicauth/metrics
+        - basicauth/logs
       pipelines:
         logs:
           exporters:

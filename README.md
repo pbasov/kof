@@ -82,7 +82,7 @@ kubectl apply -f demo/cluster/aws-managed.yaml
 kubectl get clustersummaries.config.projectsveltos.io -n hmc-system
 ```
 
-Once your managed clusters are up, it should start pushing metrics and logs to your storage one, through ingress domain you've configured.
+Once your managed clusters are up, create secrets for storage cluster authentication, it should start pushing metrics and logs to your storage one, through ingress domain you've configured.
 Check your storage cluster's Grafana for results first, then you should be able to see the same cluster in Grafana on the "mothership".
 
 ### Scaling up

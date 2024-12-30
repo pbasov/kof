@@ -85,8 +85,8 @@ dev-operators-deploy: dev ## Deploy motel-operators helm chart to the K8s cluste
 .PHONY: dev-collectors-deploy
 dev-collectors-deploy: dev ## Deploy motel-collector helm chart to the K8s cluster specified in ~/.kube/config
 	cp -f $(TEMPLATES_DIR)/motel-collectors/values.yaml dev/collectors-values.yaml
-	@$(YQ) eval -i '.motel.logs_endpoint = "http://$(MOTEL_STORAGE_NAME)-victoria-logs-single-server.$(MOTEL_STORAGE_NS):9428/insert/opentelemetry/v1/logs"' dev/collectors-values.yaml
-	@$(YQ) eval -i '.motel.metrics_endpoint = "http://vminsert-cluster.$(MOTEL_STORAGE_NS):8480/insert/0/prometheus/api/v1/write"' dev/collectors-values.yaml
+	@$(YQ) eval -i '.motel.logs.endpoint = "http://$(MOTEL_STORAGE_NAME)-victoria-logs-single-server.$(MOTEL_STORAGE_NS):9428/insert/opentelemetry/v1/logs"' dev/collectors-values.yaml
+	@$(YQ) eval -i '.motel.metrics.endpoint = "http://vminsert-cluster.$(MOTEL_STORAGE_NS):8480/insert/0/prometheus/api/v1/write"' dev/collectors-values.yaml
 	@$(YQ) eval -i '.opencost.opencost.prometheus.external.url = "http://vmselect-cluster.$(MOTEL_STORAGE_NS):8481/select/0/prometheus"' dev/collectors-values.yaml
 	$(HELM) upgrade -i motel-collectors ./charts/motel-collectors --create-namespace -n motel -f dev/collectors-values.yaml
 
@@ -135,8 +135,8 @@ dev-managed-deploy-aws: dev ## Deploy Regional Managed cluster using HMC
 	@$(YQ) eval -i '.metadata.name = "$(USER)-aws-managed"' dev/aws-managed.yaml
 	@$(YQ) '.spec.services[] | select(.name == "motel-collectors") | .values' dev/aws-managed.yaml > dev/motel-managed-values.yaml
 	@$(YQ) eval -i '.opencost.opencost.prometheus.external.url = "https://vmauth.$(STORAGE_DOMAIN)/vm/select/0/prometheus"' dev/motel-managed-values.yaml
-	@$(YQ) eval -i '.motel.logs_endpoint = "https://vmauth.$(STORAGE_DOMAIN)/vls/insert/opentelemetry/v1/logs"' dev/motel-managed-values.yaml
-	@$(YQ) eval -i '.motel.metrics_endpoint = "https://vmauth.$(STORAGE_DOMAIN)/vm/insert/0/prometheus/api/v1/write"' dev/motel-managed-values.yaml
+	@$(YQ) eval -i '.motel.logs.endpoint = "https://vmauth.$(STORAGE_DOMAIN)/vls/insert/opentelemetry/v1/logs"' dev/motel-managed-values.yaml
+	@$(YQ) eval -i '.motel.metrics.endpoint = "https://vmauth.$(STORAGE_DOMAIN)/vm/insert/0/prometheus/api/v1/write"' dev/motel-managed-values.yaml
 	@$(YQ) eval -i '(.spec.services[] | select(.name == "motel-collectors")).values |= load_str("dev/motel-managed-values.yaml")' dev/aws-managed.yaml
 	kubectl apply -f dev/aws-managed.yaml
 

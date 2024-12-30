@@ -2,8 +2,16 @@ global:
   clusterLabel: clusterName
   clusterName: mothership
 motel:
-  logs_endpoint: http://victoria-logs-single-server:9428/insert/opentelemetry/v1/logs
-  metrics_endpoint: http://vminsert-cluster:8480/insert/0/prometheus/api/v1/write
+  logs:
+    endpoint: http://victoria-logs-single-server:9428/insert/opentelemetry/v1/logs
+    credentials_secret_name: grafana-admin-credentials
+    username_key: GF_SECURITY_ADMIN_USER
+    password_key: GF_SECURITY_ADMIN_PASSWORD
+  metrics:
+    endpoint: http://vminsert-cluster:8480/insert/0/prometheus/api/v1/write
+    credentials_secret_name: grafana-admin-credentials
+    username_key: GF_SECURITY_ADMIN_USER
+    password_key: GF_SECURITY_ADMIN_PASSWORD
 prometheus-node-exporter:
   enabled: true
   hostNetwork: false
@@ -31,8 +39,9 @@ opencost:
   enabled: true
   opencost:
     prometheus:
-      username: "motel"
-      password: "motel"
+      existingSecretName: grafana-admin-credentials
+      username_key: GF_SECURITY_ADMIN_USER
+      password_key: GF_SECURITY_ADMIN_PASSWORD
       external:
         enabled: true
         url: "https://vmauth.storage0.example.net/vm/select/0/prometheus"
