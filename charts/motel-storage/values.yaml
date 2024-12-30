@@ -25,8 +25,9 @@ victoriametrics:
   vmauth:
     enabled: true
     credentials:
+      password_secret_name: grafana-admin-credentials
+      password_key: "GF_SECURITY_ADMIN_PASSWORD"
       username: motel
-      password: motel
     ingress:
       host: vmauth.hmc0.example.net
   vmcluster:
@@ -47,8 +48,7 @@ grafana:
   alerts:
     enabled: true
   security:
-    admin_user: motel
-    admin_password: motel
+    credentials_secret_name: grafana-admin-credentials
   ingress:
     enabled: true
     host: grafana.hmc0.example.net

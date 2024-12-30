@@ -113,6 +113,6 @@ spec:
             memory: 20Mi
       volumes:
       - name: config
-        configMap:
-          name: {{ include "chart.configname" .}}
+        secret:
+          secretName: {{ include "chart.secretname" .}}
 {{- end }}
