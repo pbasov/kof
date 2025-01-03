@@ -5,5 +5,8 @@ dependencies:
 - name: victoria-metrics-operator
   repository: https://victoriametrics.github.io/helm-charts/
   version: 0.36.0
-digest: sha256:2292ec0cf4531b9d855f474d8e4162ef142c2e2cf18fd1993aacb217003bb3e5
-generated: "2024-12-20T11:23:39.362094+02:00"
+- name: cluster-api-visualizer
+  repository: https://jont828.github.io/cluster-api-visualizer/charts
+  version: 1.4.0
+digest: sha256:9a438f4f7eb7fe7a6905c6c9489dabac5de1c9f9234fb7d4804ac822ed5cc909
+generated: "2025-01-03T10:54:19.243418+02:00"
