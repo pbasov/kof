@@ -50,6 +50,10 @@ victoria-metrics-operator:
   enabled: true
   crds:
     plain: true
+cluster-api-visualizer:
+  enabled: true
+sveltos-dashboard:
+  enabled: true
 promxy:
   replicaCount: 1
   enabled: true

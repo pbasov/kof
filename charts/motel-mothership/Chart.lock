@@ -5,5 +5,11 @@ dependencies:
 - name: victoria-metrics-operator
   repository: https://victoriametrics.github.io/helm-charts/
   version: 0.36.0
-digest: sha256:2292ec0cf4531b9d855f474d8e4162ef142c2e2cf18fd1993aacb217003bb3e5
-generated: "2024-12-20T11:23:39.362094+02:00"
+- name: cluster-api-visualizer
+  repository: https://jont828.github.io/cluster-api-visualizer/charts
+  version: 1.4.0
+- name: sveltos-dashboard
+  repository: https://projectsveltos.github.io/dashboard-helm-chart
+  version: 0.44.0
+digest: sha256:a4e5ee199f5b77210ee75a20c0b4049faceb0865f85d8e06cef709ef2d3b2cc9
+generated: "2025-01-03T11:10:33.954211+02:00"
