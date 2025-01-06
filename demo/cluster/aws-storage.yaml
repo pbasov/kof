@@ -4,7 +4,7 @@ metadata:
   name: aws-storage0
   namespace: hmc-system
   labels:
-    motel: "storage"
+    kof: "storage"
 spec:
   credential: aws-cluster-identity-cred
   config:
@@ -31,9 +31,9 @@ spec:
       values: |
         crds:
           enabled: true
-    - name: motel-storage
-      namespace: motel
-      template: motel-storage
+    - name: kof-storage
+      namespace: kof
+      template: kof-storage
       values: |
         victoriametrics:
           vmauth:

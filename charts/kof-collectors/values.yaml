@@ -1,7 +1,7 @@
 global:
   clusterLabel: clusterName
   clusterName: mothership
-motel:
+kof:
   logs:
     endpoint: http://victoria-logs-single-server:9428/insert/opentelemetry/v1/logs
     credentials_secret_name: grafana-admin-credentials

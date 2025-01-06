@@ -1,15 +1,16 @@
-# Mirantis OpenTelemery
-This repo contains 4 charts to deploy a monitoring stack using HMC and get metrics into storage clusters, data from which is then aggregated into single grafana interface.
+# K0rdent Observability and FinOps
+This repo contains 4 charts to deploy an observability stack using [k0rdent](https://github.com/K0rdent/kcm) and get [OpenTelemetry](https://opentelemetry.io/) data into storage clusters aggregated into single grafana interface.
+
 ![alt text](docs/otel.png)
 
 ## Mothership chart
 * central grafana interface
 * promxy to forward calls to multiple downstream regional metrics servers
 * local victoriametrics storage for alerting record rules
-* hmc helmchart definitions and service templates to deploy storage and collectors charts into managedclusters
+* k0rdent helmchart definitions and service templates to deploy storage and collectors charts into managedclusters
 
 ### Demo deployment
-In `demo/demo-mothership-values.yaml` set your target ingress names that you are going to use for your regional clusters, but they can always be changed after the fact
+In `demo/demo-mothership-values.yaml` set your target ingress names that you are going to use for your storage clusters, but they can always be changed after the fact
 
 Create secrets for grafana admin user and storage clusters datasources endpoint access. By default the secret below be reused everywhere, but it is customizable.
 
@@ -19,7 +20,7 @@ kind: Secret
 apiVersion: v1
 metadata:
   name: grafana-admin-credentials
-  namespace: motel
+  namespace: kof
 stringData:
   GF_SECURITY_ADMIN_USER: username # Grafana username
   GF_SECURITY_ADMIN_PASSWORD: password # Grafana password
@@ -27,13 +28,16 @@ type: Opaque
 ```
 
 ```bash
-helm repo add motel https://mirantis.github.io/motel/
+helm repo add kof https://mirantis.github.io/kof/
 helm repo update
-helm upgrade -i motel motel/motel-mothership -n motel -f demo/demo-mothership-values.yaml
+helm upgrade -i kof-mothership kof/kof-mothership -n kof -f demo/demo-mothership-values.yaml
 ```
 
 ## Storage chart
-* Grafana - region-specific Grafana instance, deployed and configured with grafana-operator
+
+Deploys metrics and logs [VictoriaMetrics](https://victoriametrics.com/) storages.
+
+* Grafana - storage-cluster scoped Grafana instance, deployed and configured with grafana-operator
 * vmcluster - metrics storage, ingestion, querying
 * vmlogs - logs storage
 * vmauth - auth frontend for metrics and logs ingestion and query services
@@ -42,7 +46,7 @@ helm upgrade -i motel motel/motel-mothership -n motel -f demo/demo-mothership-va
 - cert-manager
 - ingress-nginx
 
-To deploy storage `managedcluster` configure desired ingress names for vmauth and regional Grafana in it's values for the `motel-storage` template.
+To deploy storage `clusterdeployment` configure desired ingress names for vmauth and regional Grafana in it's values for the `kof-storage` template.
 `demo/cluster/aws-storage.yaml` contains example definitions
 
 ```bash
@@ -50,7 +54,7 @@ kubectl apply -f demo/cluster/aws-storage.yaml
 # you can check helm chart deployment status using ClusterSummary object:
 kubectl get clustersummaries.config.projectsveltos.io -n hmc-system
 ```
-Once the storage managedcluster is ready - retrieve its kubeconfig and get loadbalancer IP/DNS name for your ingress-nginx service.
+Once the storage clusterdeploymet is ready - retrieve its kubeconfig and get loadbalancer IP/DNS name for your ingress-nginx service.
 
 ```bash
 kubectl get secret -n hmc-system aws-storage-kubeconfig -o jsonpath={.data.value} | base64 -d  > /tmp/hmc-aws-storage-kubeconfig.yaml
@@ -74,7 +78,7 @@ This chart pre-installs all required CRDs to create Opentelemetry Collectors for
 ## Collectors chart
 * opentelemetry-collectors - [OpenTelemetry Collector](https://opentelemetry.io/docs/collector/) configured to monitor logs and metrics and send them to a storage cluster
 
-To deploy operators and collectors to a `managedcluster` configure ingress names for storage vmauth in its values for the `motel-collectors` template.
+To deploy operators and collectors to a `clusterdeployment` configure ingress names for storage vmauth in its values for the `kof-collectors` template.
 
 ```
 kubectl apply -f demo/cluster/aws-managed.yaml

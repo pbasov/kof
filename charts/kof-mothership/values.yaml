@@ -2,12 +2,12 @@ global:
   clusterLabel: clusterName
   storageClass: standard
   clusterName: mothership
-hmc:
+kcm:
   installTemplates: false
-  motel:
+  kof:
     repo:
-      name: motel
-      url: https://mirantis.github.io/motel/
+      name: kof
+      url: https://k0rdent.github.io/kof/
       insecure: false
       type: "default"
     charts:
@@ -34,13 +34,13 @@ grafana:
   alerts:
     enabled: true
   logSources:
-    - name: hmc0-logs
-      url: https://vmauth.hmc0.example.net/vls
+    - name: storage0-logs
+      url: https://vmauth.storage0.example.net/vls
       type: victoriametrics-logs-datasource
       auth:
         credentials_secret_name: grafana-admin-credentials
-    - name: hmc1-logs
-      url: https://vmauth.hmc1.example.net/vls
+    - name: storage1-logs
+      url: https://vmauth.storage1.example.net/vls
       type: victoriametrics-logs-datasource
       auth:
         credentials_secret_name: grafana-admin-credentials
@@ -99,13 +99,13 @@ promxy:
   config:
     remoteWriteUrl: http://vminsert-cluster:8480/insert/0/prometheus/api/v1/write
     serverGroups:
-      - clusterName: hmc0
+      - clusterName: storage0
         targets:
-          - vmauth.hmc0.example.net:443
+          - vmauth.storage0.example.net:443
         auth:
           credentials_secret_name: grafana-admin-credentials
-      - clusterName: hmc1
+      - clusterName: storage1
         targets:
-          - vmauth.hmc1.example.net:443
+          - vmauth.storage1.example.net:443
         auth:
           credentials_secret_name: grafana-admin-credentials

@@ -1,0 +1,14 @@
+{{- if .Values.kcm.installTemplates }}
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: {{ .Values.kcm.kof.repo.name }}
+  namespace: hmc-system
+  labels:
+    hmc.mirantis.com/managed: "true"
+spec:
+  url: {{ .Values.kcm.kof.repo.url }}
+  insecure: {{ .Values.kcm.kof.repo.insecure }}
+  type: {{ .Values.kcm.kof.repo.type }}
+{{- end }}

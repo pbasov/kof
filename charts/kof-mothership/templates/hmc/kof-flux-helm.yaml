@@ -1,20 +1,20 @@
-{{- if .Values.hmc.installTemplates }}
-{{- range $name, $values := .Values.hmc.motel.charts }}
+{{- if .Values.kcm.installTemplates }}
+{{- range $name, $values := .Values.kcm.kof.charts }}
 ---
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmChart
 metadata:
-  name: motel-{{ $name }}
+  name: kof-{{ $name }}
   namespace: hmc-system
   labels:
     hmc.mirantis.com/managed: "true"
 spec:
-  chart: motel-{{ $name }}
+  chart: kof-{{ $name }}
   interval: 10m0s
   reconcileStrategy: ChartVersion
   sourceRef:
     kind: HelmRepository
-    name: {{ $.Values.hmc.motel.repo.name }}
+    name: {{ $.Values.kcm.kof.repo.name }}
   version: {{ $values.version }}
 {{- end }}
 {{- end }}
