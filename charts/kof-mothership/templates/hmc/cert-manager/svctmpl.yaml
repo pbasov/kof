@@ -1,4 +1,4 @@
-{{- if .Values.hmc.installTemplates }}
+{{- if .Values.kcm.installTemplates }}
 apiVersion: hmc.mirantis.com/v1alpha1
 kind: ServiceTemplate
 metadata:

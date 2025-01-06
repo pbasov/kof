@@ -27,7 +27,7 @@ victoriametrics:
     credentials:
       password_secret_name: grafana-admin-credentials
       password_key: "GF_SECURITY_ADMIN_PASSWORD"
-      username: motel
+      username: kof
     ingress:
       host: vmauth.hmc0.example.net
   vmcluster:
@@ -43,7 +43,7 @@ grafana:
       url: http://vmselect-cluster:8481/select/0/prometheus
       type: prometheus
     - name: logs
-      url: http://motel-storage-victoria-logs-single-server:9428
+      url: http://kof-storage-victoria-logs-single-server:9428
       type: victoriametrics-logs-datasource
   alerts:
     enabled: true

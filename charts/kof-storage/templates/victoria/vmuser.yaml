@@ -22,7 +22,7 @@ spec:
     - /vm/insert/.*
     static:
       url: http://vminsert-cluster.{{ .Release.Namespace }}.svc:8480
-  username: {{ .Values.victoriametrics.vmauth.credentials.username | default "motel" }}
+  username: {{ .Values.victoriametrics.vmauth.credentials.username | default "kof" }}
   passwordRef:
     key: {{ .Values.victoriametrics.vmauth.credentials.password_key | default "password" }}
     name: {{ .Values.victoriametrics.vmauth.credentials.password_secret_name }}

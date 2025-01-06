@@ -132,7 +132,7 @@ spec:
 
     exporters:
       prometheusremotewrite:
-        endpoint: {{ .Values.motel.metrics.endpoint }}
+        endpoint: {{ .Values.kof.metrics.endpoint }}
         tls:
           insecure: true
         auth:
@@ -140,7 +140,7 @@ spec:
       otlphttp:
         auth:
           authenticator: basicauth/logs
-        logs_endpoint: {{ .Values.motel.logs.endpoint }}
+        logs_endpoint: {{ .Values.kof.logs.endpoint }}
       debug:
         verbosity: detailed
 

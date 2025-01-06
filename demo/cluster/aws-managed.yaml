@@ -4,7 +4,7 @@ metadata:
   name: aws-managed0
   namespace: hmc-system
   labels:
-    motel: "collector"
+    kof: "collector"
 spec:
   credential: aws-cluster-identity-cred
   config:
@@ -24,16 +24,16 @@ spec:
   services:
     - template: cert-manager
       name: cert-manager
-      namespace: motel
+      namespace: kof
       values: |
         crds:
           enabled: true
-    - template: motel-operators
-      name: motel-operators
-      namespace: motel
-    - template: motel-collectors
-      name: motel-collectors
-      namespace: motel
+    - template: kof-operators
+      name: kof-operators
+      namespace: kof
+    - template: kof-collectors
+      name: kof-collectors
+      namespace: kof
       values: |
         global:
           clusterName: aws-managed0
@@ -48,7 +48,7 @@ spec:
                 url: "https://vmauth.storage0.example.net/vm/select/0/prometheus"
             exporter:
               defaultClusterId: "aws-managed0"
-        motel:
+        kof:
           logs:
             credentials_secret_name: grafana-admin-credentials
             username_key: GF_SECURITY_ADMIN_USER

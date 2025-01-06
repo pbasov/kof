@@ -1,5 +1,5 @@
 apiVersion: v2
-name: motel-mothership
+name: kof-mothership
 description: A Helm chart that deploys Grafana, Promxy, and VictoriaMetrics.
 version: 0.1.6
 appVersion: "1.0"
