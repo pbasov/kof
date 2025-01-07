@@ -22,19 +22,23 @@ rules:
   - update
   - watch
 - apiGroups:
+  - "events.k8s.io"
+  resources:
+  - events
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - ""
   resources:
   - events
   verbs:
-  - create
-  - patch
-- apiGroups:
-  - ""
-  resources:
-  - namespaces
-  verbs:
+  - get
   - list
   - watch
+  - create
+  - patch
 - apiGroups:
   - apps
   resources:
@@ -54,6 +58,8 @@ rules:
   - extensions
   resources:
   - replicasets
+  - daemonsets
+  - deployments
   verbs:
   - get
   - list
@@ -99,8 +105,14 @@ rules:
   - ""
   resources:
   - nodes
+  - nodes/spec
+  - pods/status
   - namespaces
+  - namespaces/status
   - secrets
+  - replicationcontrollers
+  - replicationcontrollers/status
+  - resourcequotas
   verbs:
   - get
   - list
@@ -109,6 +121,7 @@ rules:
   - batch
   resources:
   - jobs
+  - cronjobs
   verbs:
   - get
   - list
