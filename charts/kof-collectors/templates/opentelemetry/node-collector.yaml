@@ -142,13 +142,20 @@ spec:
           authenticator: basicauth/logs
         logs_endpoint: {{ .Values.kof.logs.endpoint }}
       debug:
-        verbosity: detailed
+        verbosity: basic
 
     service:
       extensions:
         - basicauth/metrics
         - basicauth/logs
       pipelines:
+        traces:
+          receivers:
+            - otlp
+          processors:
+            - batch
+          exporters:
+            - debug
         logs:
           exporters:
             - otlphttp

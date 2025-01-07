@@ -12,6 +12,8 @@ kof:
     credentials_secret_name: grafana-admin-credentials
     username_key: GF_SECURITY_ADMIN_USER
     password_key: GF_SECURITY_ADMIN_PASSWORD
+  instrumentation:
+    enabled: true
 prometheus-node-exporter:
   enabled: true
   hostNetwork: false
