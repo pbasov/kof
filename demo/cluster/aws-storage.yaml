@@ -42,6 +42,7 @@ spec:
           security:
             password_secret_name: grafana-admin-credentials
             password_key: "GF_SECURITY_ADMIN_PASSWORD"
+            username_key: "GF_SECURITY_ADMIN_USER"
         grafana:
           ingress:
             host: grafana.storage0.example.net

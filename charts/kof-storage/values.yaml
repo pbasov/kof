@@ -27,7 +27,7 @@ victoriametrics:
     credentials:
       password_secret_name: grafana-admin-credentials
       password_key: "GF_SECURITY_ADMIN_PASSWORD"
-      username: kof
+      username_key: "GF_SECURITY_ADMIN_USER"
     ingress:
       host: vmauth.hmc0.example.net
   vmcluster:
