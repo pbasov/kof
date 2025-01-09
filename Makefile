@@ -26,6 +26,7 @@ COLLECTORS_VERSION=$(shell $(YQ) '.version' $(TEMPLATES_DIR)/kof-collectors/Char
 STORAGE_VERSION=$(shell $(YQ) '.version' $(TEMPLATES_DIR)/kof-storage/Chart.yaml)
 USER_EMAIL=$(shell git config user.email)
 
+MANAGED_CLUSTER_NAME = $(USER)-aws-managed
 STORAGE_DOMAIN = $(USER)-storage.$(KOF_DNS)
 KOF_STORAGE_NAME = kof-storage
 KOF_STORAGE_NG = kof
@@ -133,8 +134,10 @@ dev-storage-deploy-aws: dev ## Deploy Regional Managed cluster using KCM
 .PHONY: dev-managed-deploy-aws
 dev-managed-deploy-aws: dev ## Deploy Regional Managed cluster using KCM
 	cp -f demo/cluster/aws-managed.yaml dev/aws-managed.yaml
-	@$(YQ) eval -i '.metadata.name = "$(USER)-aws-managed"' dev/aws-managed.yaml
+	@$(YQ) eval -i '.metadata.name = "$(MANAGED_CLUSTER_NAME)"' dev/aws-managed.yaml
 	@$(YQ) '.spec.services[] | select(.name == "kof-collectors") | .values' dev/aws-managed.yaml > dev/kof-managed-values.yaml
+	@$(YQ) eval -i '.global.clusterName = "$(MANAGED_CLUSTER_NAME)"' dev/kof-managed-values.yaml
+	@$(YQ) eval -i '.opencost.opencost.exporter.defaultClusterId = "$(MANAGED_CLUSTER_NAME)"' dev/kof-managed-values.yaml
 	@$(YQ) eval -i '.opencost.opencost.prometheus.external.url = "https://vmauth.$(STORAGE_DOMAIN)/vm/select/0/prometheus"' dev/kof-managed-values.yaml
 	@$(YQ) eval -i '.kof.logs.endpoint = "https://vmauth.$(STORAGE_DOMAIN)/vls/insert/opentelemetry/v1/logs"' dev/kof-managed-values.yaml
 	@$(YQ) eval -i '.kof.metrics.endpoint = "https://vmauth.$(STORAGE_DOMAIN)/vm/insert/0/prometheus/api/v1/write"' dev/kof-managed-values.yaml
