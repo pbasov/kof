@@ -2,7 +2,7 @@ global:
   clusterLabel: clusterName
   storageClass: standard
   clusterName: mothership
-hmc:
+kcm:
   installTemplates: true
 victoriametrics:
   enabled: enabled
