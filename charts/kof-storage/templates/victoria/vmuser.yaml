@@ -22,12 +22,12 @@ spec:
     - /vm/insert/.*
     static:
       url: http://vminsert-cluster.{{ .Release.Namespace }}.svc:8480
-{{- $secret := (lookup "v1" "Secret" .Release.Namespace .Values.victoriametrics.vmauth.credentials.password_secret_name) }}
-{{- if $secret }}
+{{- $secret := (lookup "v1" "Secret" .Release.Namespace .Values.victoriametrics.vmauth.credentials.credentials_secret_name) }}
+{{- if not $.Values.global.lint }}
   username: {{ index $secret.data .Values.victoriametrics.vmauth.credentials.username_key | b64dec | quote }}
 {{- end }}
   passwordRef:
     key: {{ .Values.victoriametrics.vmauth.credentials.password_key }}
-    name: {{ .Values.victoriametrics.vmauth.credentials.password_secret_name }}
+    name: {{ .Values.victoriametrics.vmauth.credentials.credentials_secret_name }}
 {{- end }}
 {{- end }}

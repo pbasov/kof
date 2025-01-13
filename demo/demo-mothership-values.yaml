@@ -25,7 +25,7 @@ grafana:
       url: https://vmauth.hmc0.example.net/vls
       type: victorialogs-datasource
       auth:
-        credentials_secret_name: vmauth-credentials
+        credentials_secret_name: storage-vmuser-credentials
         username_key: "username"
         password_key: "password"
   security:
@@ -84,6 +84,7 @@ promxy:
         targets:
           - vmauth.hmc0.example.net:443
         auth:
-          credentials_secret_name: vmauth-credentials
+          credentials_secret_name: storage-vmuser-credentials
           username_key: "username"
           password_key: "password"
+          create_secret: true

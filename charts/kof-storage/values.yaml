@@ -2,6 +2,8 @@ global:
   clusterLabel: clusterName
   storageClass: ebs-csi-default-sc
   clusterName: storage
+  random_username_length: 8
+  random_password_length: 12
 cert-manager:
   enabled: true
   email: mail@example.net
@@ -25,9 +27,9 @@ victoriametrics:
   vmauth:
     enabled: true
     credentials:
-      password_secret_name: grafana-admin-credentials
-      password_key: "GF_SECURITY_ADMIN_PASSWORD"
-      username_key: "GF_SECURITY_ADMIN_USER"
+      username_key: username
+      password_key: password
+      credentials_secret_name: storage-vmuser-credentials
     ingress:
       host: vmauth.hmc0.example.net
   vmcluster:
@@ -49,6 +51,7 @@ grafana:
     enabled: true
   security:
     credentials_secret_name: grafana-admin-credentials
+    create_secret: true
   ingress:
     enabled: true
     host: grafana.hmc0.example.net

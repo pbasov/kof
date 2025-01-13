@@ -5,7 +5,7 @@ apiVersion: hmc.mirantis.com/v1alpha1
 kind: ServiceTemplate
 metadata:
   name: kof-{{ $name }}
-  namespace: hmc-system
+  namespace: {{ $.Values.kcm.namespace }}
 spec:
   helm:
     chartRef:

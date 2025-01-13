@@ -12,19 +12,14 @@ This repo contains 4 charts to deploy an observability stack using [k0rdent](htt
 ### Demo deployment
 In `demo/demo-mothership-values.yaml` set your target ingress names that you are going to use for your storage clusters, but they can always be changed after the fact
 
-Create secrets for grafana admin user and storage clusters datasources endpoint access. By default the secret below be reused everywhere, but it is customizable.
+By default the secrets defined in the `values.yaml` are created automatically and propagated to managed clusters using Sveltos cluster profile.
 
-```yaml
----
-kind: Secret
-apiVersion: v1
-metadata:
-  name: grafana-admin-credentials
-  namespace: kof
-stringData:
-  GF_SECURITY_ADMIN_USER: username # Grafana username
-  GF_SECURITY_ADMIN_PASSWORD: password # Grafana password
-type: Opaque
+You can retrieve grafana password and username using the following command
+
+```bash
+kubectl get secret grafana-admin-credentials -o jsonpath="{.data.GF_SECURITY_ADMIN_USER}" -n kof | base64 -d; echo
+
+kubectl get secret grafana-admin-credentials -o jsonpath="{.data.GF_SECURITY_ADMIN_PASSWORD}" -n kof | base64 -d; echo
 ```
 
 ```bash
