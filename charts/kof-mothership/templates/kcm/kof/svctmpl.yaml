@@ -1,7 +1,7 @@
 {{- if .Values.kcm.installTemplates }}
 {{- range $name, $values := .Values.kcm.kof.charts }}
 ---
-apiVersion: hmc.mirantis.com/v1alpha1
+apiVersion: k0rdent.mirantis.com/v1alpha1
 kind: ServiceTemplate
 metadata:
   name: kof-{{ $name }}
@@ -12,7 +12,7 @@ spec:
       apiVersion: source.toolkit.fluxcd.io/v1
       kind: HelmChart
       name: kof-{{ $name }}
-      namespace: hmc-system
+      namespace: {{ $.Values.kcm.namespace }}
   providers: []
 {{- end }}
 {{- end }}

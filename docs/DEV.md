@@ -50,13 +50,13 @@ Install "mothership" helm chart into your "mothership" cluster
 make dev-ms-deploy-aws
 ```
 
-Create "storage" managed cluster using HMC
+Create "storage" managed cluster using KCM
 
 ```bash
 make dev-storage-deploy-aws
 ```
 
-Create "managed" managed cluster using HMC
+Create "managed" managed cluster using KCM
 
 ```bash
 make dev-managed-deploy-aws

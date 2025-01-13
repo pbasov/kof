@@ -1,8 +1,8 @@
-apiVersion: hmc.mirantis.com/v1alpha1
+apiVersion: k0rdent.mirantis.com/v1alpha1
 kind: ClusterDeployment
 metadata:
   name: aws-storage0
-  namespace: hmc-system
+  namespace: kcm-system
   labels:
     kof: "storage"
 spec:
@@ -10,7 +10,7 @@ spec:
   config:
     clusterIdentity:
       name: aws-cluster-identity
-      namespace: hmc-system
+      namespace: kcm-system
     controlPlane:
       instanceType: t3.large
     controlPlaneNumber: 1

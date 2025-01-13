@@ -1,13 +1,13 @@
 {
 	"nodes":[
 		{"id":"bfb5b9ca6d6173a2","type":"group","x":-2300,"y":-480,"width":1194,"height":1232,"label":"Azure - West Europe - Netherlands"},
-		{"id":"8e43733fc60f6285","type":"group","x":-960,"y":-996,"width":920,"height":1234,"label":"HMC Management Cluster"},
+		{"id":"8e43733fc60f6285","type":"group","x":-960,"y":-996,"width":920,"height":1234,"label":"KCM Management Cluster"},
 		{"id":"c90038fee416518d","type":"group","x":-2300,"y":-1139,"width":1194,"height":617,"label":"AWS eu-central"},
 		{"id":"c6eb697ae5a678d0","type":"group","x":-918,"y":-299,"width":858,"height":512,"label":"Mothership stack"},
 		{"id":"bea4f3a4119c09db","type":"group","x":-2274,"y":-422,"width":571,"height":552,"label":"ManagedCluster - azure-nl-0"},
 		{"id":"cffd281f4d05978c","type":"group","x":-2274,"y":171,"width":571,"height":552,"label":"ManagedCluster - azure-nl-1"},
 		{"id":"327c8d02308940c7","type":"group","x":-2274,"y":-1089,"width":571,"height":552,"label":"ManagedCluster - aws-eu-central-0"},
-		{"id":"4201a84061be9489","type":"group","x":-918,"y":-927,"width":571,"height":552,"label":"HMC CAPI stack"},
+		{"id":"4201a84061be9489","type":"group","x":-918,"y":-927,"width":571,"height":552,"label":"KCM CAPI stack"},
 		{"id":"6ad3921b1970c1b2","type":"group","x":-1614,"y":-73,"width":437,"height":371,"label":"k0s azure-nl-0-storage"},
 		{"id":"782718b4a48faebe","type":"group","x":-1622,"y":-984,"width":437,"height":342,"label":"k0s aws-eu-central-0-storage"},
 		{"id":"d3a6a85b665e3a5b","type":"group","x":-1606,"y":-16,"width":421,"height":310,"label":"Metrics + Logs + Traces"},

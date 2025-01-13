@@ -15,7 +15,7 @@ $(CHARTS_PACKAGE_DIR): | $(LOCALBIN)
 	rm -rf $(CHARTS_PACKAGE_DIR)
 	mkdir -p $(CHARTS_PACKAGE_DIR)
 
-REGISTRY_NAME ?= hmc-local-registry
+REGISTRY_NAME ?= kcm-local-registry
 REGISTRY_PORT ?= 5001
 REGISTRY_REPO ?= oci://127.0.0.1:$(REGISTRY_PORT)/charts
 REGISTRY_IS_OCI = $(shell echo $(REGISTRY_REPO) | grep -q oci && echo true || echo false)
@@ -72,7 +72,7 @@ helm-push: helm-package
 				echo "REGISTRY_USERNAME and REGISTRY_PASSWORD must be populated to push the chart to an HTTPS repository"; \
 				exit 1; \
 			else \
-				$(HELM) repo add hmc $(REGISTRY_REPO); \
+				$(HELM) repo add kcm $(REGISTRY_REPO); \
 				echo "Pushing $$chart to $(REGISTRY_REPO)"; \
 				$(HELM) cm-push "$$chart" $(REGISTRY_REPO) --username $$REGISTRY_USERNAME --password $$REGISTRY_PASSWORD; \
 			fi; \

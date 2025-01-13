@@ -31,7 +31,7 @@ victoriametrics:
       password_key: password
       credentials_secret_name: storage-vmuser-credentials
     ingress:
-      host: vmauth.hmc0.example.net
+      host: vmauth.kcm0.example.net
   vmcluster:
     enabled: true
   vmalert:
@@ -54,7 +54,7 @@ grafana:
     create_secret: true
   ingress:
     enabled: true
-    host: grafana.hmc0.example.net
+    host: grafana.kcm0.example.net
   autoinstrumentation:
     enabled: true
 victoria-metrics-operator:
