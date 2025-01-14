@@ -15,7 +15,7 @@ $(CHARTS_PACKAGE_DIR): | $(LOCALBIN)
 	rm -rf $(CHARTS_PACKAGE_DIR)
 	mkdir -p $(CHARTS_PACKAGE_DIR)
 
-REGISTRY_NAME ?= hmc-local-registry
+REGISTRY_NAME ?= kcm-local-registry
 REGISTRY_PORT ?= 5001
 REGISTRY_REPO ?= oci://127.0.0.1:$(REGISTRY_PORT)/charts
 REGISTRY_IS_OCI = $(shell echo $(REGISTRY_REPO) | grep -q oci && echo true || echo false)
@@ -36,7 +36,7 @@ dev:
 
 lint-chart-%:
 	$(HELM) dependency update $(TEMPLATES_DIR)/$*
-	$(HELM) lint --strict $(TEMPLATES_DIR)/$*
+	$(HELM) lint --strict $(TEMPLATES_DIR)/$* --set global.lint=true
 
 package-chart-%: lint-chart-%
 	$(HELM) package --destination $(CHARTS_PACKAGE_DIR) $(TEMPLATES_DIR)/$*
@@ -72,7 +72,7 @@ helm-push: helm-package
 				echo "REGISTRY_USERNAME and REGISTRY_PASSWORD must be populated to push the chart to an HTTPS repository"; \
 				exit 1; \
 			else \
-				$(HELM) repo add hmc $(REGISTRY_REPO); \
+				$(HELM) repo add kcm $(REGISTRY_REPO); \
 				echo "Pushing $$chart to $(REGISTRY_REPO)"; \
 				$(HELM) cm-push "$$chart" $(REGISTRY_REPO) --username $$REGISTRY_USERNAME --password $$REGISTRY_PASSWORD; \
 			fi; \
@@ -105,8 +105,8 @@ dev-storage-deploy: dev ## Deploy kof-storage helm chart to the K8s cluster spec
 dev-ms-deploy-aws: dev ## Deploy Mothership helm chart to the K8s cluster specified in ~/.kube/config for a remote storage cluster
 	cp -f $(TEMPLATES_DIR)/kof-mothership/values.yaml dev/mothership-values.yaml
 	@$(YQ) eval -i '.kcm.installTemplates = true' dev/mothership-values.yaml
-	@$(YQ) eval -i '.grafana.logSources = [{"name": "$(USER)-storage", "url": "https://vmauth.$(STORAGE_DOMAIN)/vls", "type": "victoriametrics-logs-datasource", "auth": {"credentials_secret_name": "grafana-admin-credentials"}}]' dev/mothership-values.yaml
-	@$(YQ) eval -i '.promxy.config.serverGroups = [{"clusterName": "$(USER)-storage", "targets": ["vmauth.$(STORAGE_DOMAIN):443"], "auth": {"credentials_secret_name": "grafana-admin-credentials"}}]' dev/mothership-values.yaml
+	@$(YQ) eval -i '.grafana.logSources = [{"name": "$(USER)-aws-storage", "url": "https://vmauth.$(STORAGE_DOMAIN)/vls", "type": "victoriametrics-logs-datasource", "auth": {"credentials_secret_name": "storage-vmuser-credentials", "username_key": "username", "password_key": "password"}}]' dev/mothership-values.yaml
+	@$(YQ) eval -i '.promxy.config.serverGroups = [{"clusterName": "$(USER)-aws-storage", "targets": ["vmauth.$(STORAGE_DOMAIN):443"], "auth": {"credentials_secret_name": "storage-vmuser-credentials", "create_secret": true, "username_key": "username", "password_key": "password"}}]' dev/mothership-values.yaml
 
 	@$(YQ) eval -i '.kcm.kof.charts.collectors.version = "$(COLLECTORS_VERSION)"' dev/mothership-values.yaml
 	@$(YQ) eval -i '.kcm.kof.charts.storage.version = "$(STORAGE_VERSION)"' dev/mothership-values.yaml
@@ -117,31 +117,31 @@ dev-ms-deploy-aws: dev ## Deploy Mothership helm chart to the K8s cluster specif
 	else \
 		$(YQ) eval -i '.kcm.kof.repo.url = "$(REGISTRY_REPO)"' dev/mothership-values.yaml; \
 	fi; \
-	$(HELM) upgrade -i kof ./charts/kof-mothership -n kof --create-namespace -f dev/mothership-values.yaml
+	$(HELM) upgrade -i kof-mothership ./charts/kof-mothership -n kof --create-namespace -f dev/mothership-values.yaml
 
 .PHONY: dev-storage-deploy-aws
 dev-storage-deploy-aws: dev ## Deploy Regional Managed cluster using KCM
 	cp -f demo/cluster/aws-storage.yaml dev/aws-storage.yaml
 	@$(YQ) eval -i '.metadata.name = "$(USER)-aws-storage"' dev/aws-storage.yaml
-	@$(YQ) '.spec.services[] | select(.name == "kof-storage") | .values' dev/aws-storage.yaml > dev/kof-storage-values.yaml
+	@$(YQ) '.spec.serviceSpec.services[] | select(.name == "kof-storage") | .values' dev/aws-storage.yaml > dev/kof-storage-values.yaml
 	@$(YQ) eval -i '.["cert-manager"].email = "$(USER_EMAIL)"' dev/kof-storage-values.yaml
 	@$(YQ) eval -i '.victoriametrics.vmauth.ingress.host = "vmauth.$(STORAGE_DOMAIN)"' dev/kof-storage-values.yaml
 	@$(YQ) eval -i '.grafana.ingress.host = "grafana.$(STORAGE_DOMAIN)"' dev/kof-storage-values.yaml
 	@$(YQ) eval -i '.["external-dns"].enabled = true' dev/kof-storage-values.yaml
-	@$(YQ) eval -i '(.spec.services[] | select(.name == "kof-storage")).values |= load_str("dev/kof-storage-values.yaml")' dev/aws-storage.yaml
+	@$(YQ) eval -i '(.spec.serviceSpec.services[] | select(.name == "kof-storage")).values |= load_str("dev/kof-storage-values.yaml")' dev/aws-storage.yaml
 	kubectl apply -f dev/aws-storage.yaml
 
 .PHONY: dev-managed-deploy-aws
 dev-managed-deploy-aws: dev ## Deploy Regional Managed cluster using KCM
 	cp -f demo/cluster/aws-managed.yaml dev/aws-managed.yaml
 	@$(YQ) eval -i '.metadata.name = "$(MANAGED_CLUSTER_NAME)"' dev/aws-managed.yaml
-	@$(YQ) '.spec.services[] | select(.name == "kof-collectors") | .values' dev/aws-managed.yaml > dev/kof-managed-values.yaml
+	@$(YQ) '.spec.serviceSpec.services[] | select(.name == "kof-collectors") | .values' dev/aws-managed.yaml > dev/kof-managed-values.yaml
 	@$(YQ) eval -i '.global.clusterName = "$(MANAGED_CLUSTER_NAME)"' dev/kof-managed-values.yaml
 	@$(YQ) eval -i '.opencost.opencost.exporter.defaultClusterId = "$(MANAGED_CLUSTER_NAME)"' dev/kof-managed-values.yaml
 	@$(YQ) eval -i '.opencost.opencost.prometheus.external.url = "https://vmauth.$(STORAGE_DOMAIN)/vm/select/0/prometheus"' dev/kof-managed-values.yaml
 	@$(YQ) eval -i '.kof.logs.endpoint = "https://vmauth.$(STORAGE_DOMAIN)/vls/insert/opentelemetry/v1/logs"' dev/kof-managed-values.yaml
 	@$(YQ) eval -i '.kof.metrics.endpoint = "https://vmauth.$(STORAGE_DOMAIN)/vm/insert/0/prometheus/api/v1/write"' dev/kof-managed-values.yaml
-	@$(YQ) eval -i '(.spec.services[] | select(.name == "kof-collectors")).values |= load_str("dev/kof-managed-values.yaml")' dev/aws-managed.yaml
+	@$(YQ) eval -i '(.spec.serviceSpec.services[] | select(.name == "kof-collectors")).values |= load_str("dev/kof-managed-values.yaml")' dev/aws-managed.yaml
 	kubectl apply -f dev/aws-managed.yaml
 
 ## Tool Binaries

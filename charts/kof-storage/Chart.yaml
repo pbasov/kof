@@ -1,7 +1,7 @@
 apiVersion: v2
 name: kof-storage
 description: A Helm chart that deploys Grafana, and VictoriaMetrics.
-version: 0.1.2
+version: 0.1.4
 appVersion: "1.0"
 dependencies:
   - name: grafana-operator

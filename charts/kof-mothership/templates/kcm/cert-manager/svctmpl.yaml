@@ -1,15 +1,15 @@
 {{- if .Values.kcm.installTemplates }}
-apiVersion: hmc.mirantis.com/v1alpha1
+apiVersion: k0rdent.mirantis.com/v1alpha1
 kind: ServiceTemplate
 metadata:
   name: cert-manager
-  namespace: hmc-system
+  namespace: {{ .Values.kcm.namespace }}
 spec:
   helm:
     chartRef:
       apiVersion: source.toolkit.fluxcd.io/v1
       kind: HelmChart
       name: cert-manager
-      namespace: hmc-system
+      namespace: {{ .Values.kcm.namespace }}
   providers: []
 {{- end }}

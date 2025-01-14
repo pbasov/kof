@@ -4,9 +4,9 @@ apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
   name: {{ .Values.kcm.kof.repo.name }}
-  namespace: hmc-system
+  namespace: {{ .Values.kcm.namespace }}
   labels:
-    hmc.mirantis.com/managed: "true"
+    k0rdent.mirantis.com/managed: "true"
 spec:
   url: {{ .Values.kcm.kof.repo.url }}
   insecure: {{ .Values.kcm.kof.repo.insecure }}

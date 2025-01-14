@@ -21,11 +21,11 @@ grafana:
   alerts:
     enabled: true
   logSources:
-    - name: hmc0-logs
-      url: https://vmauth.hmc0.example.net/vls
+    - name: storage0-logs
+      url: https://vmauth.kcm0.example.net/vls
       type: victorialogs-datasource
       auth:
-        credentials_secret_name: vmauth-credentials
+        credentials_secret_name: storage-vmuser-credentials
         username_key: "username"
         password_key: "password"
   security:
@@ -80,10 +80,11 @@ promxy:
   config:
     remoteWriteUrl: http://vminsert-cluster:8480/insert/0/prometheus/api/v1/write
     serverGroups:
-      - clusterName: hmc0
+      - clusterName: kcm0
         targets:
-          - vmauth.hmc0.example.net:443
+          - vmauth.kcm0.example.net:443
         auth:
-          credentials_secret_name: vmauth-credentials
+          credentials_secret_name: storage-vmuser-credentials
           username_key: "username"
           password_key: "password"
+          create_secret: true

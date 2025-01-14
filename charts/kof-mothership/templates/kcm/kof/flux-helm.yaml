@@ -5,9 +5,9 @@ apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmChart
 metadata:
   name: kof-{{ $name }}
-  namespace: hmc-system
+  namespace: {{ $.Values.kcm.namespace }}
   labels:
-    hmc.mirantis.com/managed: "true"
+    k0rdent.mirantis.com/managed: "true"
 spec:
   chart: kof-{{ $name }}
   interval: 10m0s

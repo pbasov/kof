@@ -1,5 +1,6 @@
 {{- if .Values.grafana.enabled }}
 {{- range .Values.grafana.logSources }}
+---
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDatasource
 metadata:
@@ -12,12 +13,12 @@ spec:
     - targetPath: "basicAuthUser"
       valueFrom:
         secretKeyRef:
-          key: {{ .auth.username_key | default "GF_SECURITY_ADMIN_USER" }}
+          key: {{ .auth.username_key }}
           name: {{ .auth.credentials_secret_name }}
     - targetPath: "secureJsonData.basicAuthPassword"
       valueFrom:
         secretKeyRef:
-          key: {{ .auth.password_key | default "GF_SECURITY_ADMIN_PASSWORD" }}
+          key: {{ .auth.password_key }}
           name: {{ .auth.credentials_secret_name }}
   datasource:
     access: proxy
@@ -30,6 +31,5 @@ spec:
     matchLabels:
       dashboards: grafana
   resyncPeriod: 5m
----
 {{- end }}
 {{- end }}

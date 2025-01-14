@@ -4,14 +4,14 @@ global:
 kof:
   logs:
     endpoint: http://victoria-logs-single-server:9428/insert/opentelemetry/v1/logs
-    credentials_secret_name: grafana-admin-credentials
-    username_key: GF_SECURITY_ADMIN_USER
-    password_key: GF_SECURITY_ADMIN_PASSWORD
+    credentials_secret_name: storage-vmuser-credentials
+    username_key: username
+    password_key: password
   metrics:
     endpoint: http://vminsert-cluster:8480/insert/0/prometheus/api/v1/write
-    credentials_secret_name: grafana-admin-credentials
-    username_key: GF_SECURITY_ADMIN_USER
-    password_key: GF_SECURITY_ADMIN_PASSWORD
+    credentials_secret_name: storage-vmuser-credentials
+    username_key: username
+    password_key: password
   instrumentation:
     enabled: true
 prometheus-node-exporter:
@@ -41,9 +41,9 @@ opencost:
   enabled: true
   opencost:
     prometheus:
-      existingSecretName: grafana-admin-credentials
-      username_key: GF_SECURITY_ADMIN_USER
-      password_key: GF_SECURITY_ADMIN_PASSWORD
+      existingSecretName: storage-vmuser-credentials
+      username_key: username
+      password_key: password
       external:
         enabled: true
         url: "https://vmauth.storage0.example.net/vm/select/0/prometheus"

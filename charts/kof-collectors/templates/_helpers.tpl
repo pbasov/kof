@@ -2,7 +2,7 @@
 {{- define "basic_auth_extensions" -}}
 {{- range tuple "metrics" "logs" }}
 {{- $secret := (lookup "v1" "Secret" $.Release.Namespace (index $.Values "kof" . "credentials_secret_name")) }}
-{{- if $secret }}
+{{- if not $.Values.global.lint }}
 basicauth/{{ . }}:
   client_auth:
     username: {{ index $secret.data (index $.Values "kof" . "username_key") | b64dec | quote }}

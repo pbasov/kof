@@ -12,19 +12,14 @@ This repo contains 4 charts to deploy an observability stack using [k0rdent](htt
 ### Demo deployment
 In `demo/demo-mothership-values.yaml` set your target ingress names that you are going to use for your storage clusters, but they can always be changed after the fact
 
-Create secrets for grafana admin user and storage clusters datasources endpoint access. By default the secret below be reused everywhere, but it is customizable.
+By default the secrets defined in the `values.yaml` are created automatically and propagated to managed clusters using Sveltos cluster profile.
 
-```yaml
----
-kind: Secret
-apiVersion: v1
-metadata:
-  name: grafana-admin-credentials
-  namespace: kof
-stringData:
-  GF_SECURITY_ADMIN_USER: username # Grafana username
-  GF_SECURITY_ADMIN_PASSWORD: password # Grafana password
-type: Opaque
+You can retrieve grafana password and username using the following command
+
+```bash
+kubectl get secret grafana-admin-credentials -o jsonpath="{.data.GF_SECURITY_ADMIN_USER}" -n kof | base64 -d; echo
+
+kubectl get secret grafana-admin-credentials -o jsonpath="{.data.GF_SECURITY_ADMIN_PASSWORD}" -n kof | base64 -d; echo
 ```
 
 ```bash
@@ -52,13 +47,13 @@ To deploy storage `clusterdeployment` configure desired ingress names for vmauth
 ```bash
 kubectl apply -f demo/cluster/aws-storage.yaml
 # you can check helm chart deployment status using ClusterSummary object:
-kubectl get clustersummaries.config.projectsveltos.io -n hmc-system
+kubectl get clustersummaries.config.projectsveltos.io -n kcm-system
 ```
 Once the storage clusterdeploymet is ready - retrieve its kubeconfig and get loadbalancer IP/DNS name for your ingress-nginx service.
 
 ```bash
-kubectl get secret -n hmc-system aws-storage-kubeconfig -o jsonpath={.data.value} | base64 -d  > /tmp/hmc-aws-storage-kubeconfig.yaml
-export KUBECONFIG=/tmp/hmc-aws-storage-kubeconfig.yaml
+kubectl get secret -n kcm-system aws-storage-kubeconfig -o jsonpath={.data.value} | base64 -d  > /tmp/kcm-aws-storage-kubeconfig.yaml
+export KUBECONFIG=/tmp/kcm-aws-storage-kubeconfig.yaml
 kubectl get svc -n ingress-nginx ingress-nginx-controller
 ```
 
@@ -83,7 +78,7 @@ To deploy operators and collectors to a `clusterdeployment` configure ingress na
 ```
 kubectl apply -f demo/cluster/aws-managed.yaml
 # you can check helm chart deployment status using ClusterSummary object:
-kubectl get clustersummaries.config.projectsveltos.io -n hmc-system
+kubectl get clustersummaries.config.projectsveltos.io -n kcm-system
 ```
 
 Once your managed clusters are up, create secrets for storage cluster authentication, it should start pushing metrics and logs to your storage one, through ingress domain you've configured.
