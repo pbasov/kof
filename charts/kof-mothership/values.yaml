@@ -20,11 +20,12 @@ kcm:
         version: 0.0.2
       storage:
         version: 0.1.4
-    secrets_copy:
-      matchLabels:
-        k0rdent.mirantis.com/kof-storage-secrets: "true"
-      secrets:
-        - storage-vmuser-credentials
+    clusterProfiles:
+      kof-storage-secrets:
+        matchLabels:
+          k0rdent.mirantis.com/kof-storage-secrets: "true"
+        secrets:
+          - storage-vmuser-credentials
 victoriametrics:
   enabled: true
   vmcluster:
