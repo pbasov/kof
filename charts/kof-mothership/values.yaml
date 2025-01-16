@@ -21,7 +21,7 @@ kcm:
       storage:
         version: 0.1.4
     clusterProfiles:
-      kof-storage-secrets:
+      kofStorageSecrets:
         matchLabels:
           k0rdent.mirantis.com/kof-storage-secrets: "true"
         secrets:
