@@ -21,6 +21,7 @@ spec:
     workersNumber: 3
     clusterLabels:
       k0rdent.mirantis.com/kof-storage-secrets: "true"
+      k0rdent.mirantis.com/kof-aws-dns-secrets: "true"
   template: aws-standalone-cp-0-0-5
   serviceSpec:
     priority: 100
