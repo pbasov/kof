@@ -58,7 +58,15 @@ var _ = Describe("PromxyServerGroup Controller", func() {
 			Namespace: "default",
 		}
 
+		var controllerReconciler *PromxyServerGroupReconciler
+
 		BeforeEach(func() {
+			controllerReconciler = &PromxyServerGroupReconciler{
+				Client:             k8sClient,
+				Scheme:             k8sClient.Scheme(),
+				RemoteWriteUrl:     "http://storage/write",
+				PromxyConfigReload: func() error { return nil },
+			}
 			By("creating the custom resource for the Kind PromxyServerGroup")
 			err := k8sClient.Get(ctx, promxyServerGroupNamespacedName, promxyservergroup)
 			if err != nil && errors.IsNotFound(err) {
@@ -140,11 +148,6 @@ var _ = Describe("PromxyServerGroup Controller", func() {
 			err := k8sClient.Get(ctx, promxyServerGroupNamespacedName, serverGroup)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(k8sClient.Delete(ctx, serverGroup)).To(Succeed())
-			controllerReconciler := &PromxyServerGroupReconciler{
-				Client:         k8sClient,
-				Scheme:         k8sClient.Scheme(),
-				RemoteWriteUrl: "http://storage/write",
-			}
 
 			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: promxyServerGroupNamespacedName,
@@ -159,12 +162,6 @@ var _ = Describe("PromxyServerGroup Controller", func() {
 
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			controllerReconciler := &PromxyServerGroupReconciler{
-				Client:         k8sClient,
-				Scheme:         k8sClient.Scheme(),
-				RemoteWriteUrl: "http://storage/write",
-			}
-
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: promxyServerGroupNamespacedName,
 			})

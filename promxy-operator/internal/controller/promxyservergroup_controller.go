@@ -33,11 +33,14 @@ import (
 
 const SecretNameLabel = "k0rdent.mirantis.com/promxy-secret-name"
 
+type PromxyConfigReloadFunc func() error
+
 // PromxyServerGroupReconciler reconciles a PromxyServerGroup object
 type PromxyServerGroupReconciler struct {
 	client.Client
-	Scheme         *runtime.Scheme
-	RemoteWriteUrl string
+	Scheme             *runtime.Scheme
+	RemoteWriteUrl     string
+	PromxyConfigReload PromxyConfigReloadFunc
 }
 
 // +kubebuilder:rbac:groups=kof.k0rdent.mirantis.com,resources=promxyservergroups,verbs=get;list;watch;create;update;patch;delete
@@ -133,6 +136,11 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 				log.Error(err, "cannot create promxy secret")
 				return ctrl.Result{}, err
 			}
+			log.Info("Reloading promxy config")
+			if err := r.PromxyConfigReload(); err != nil {
+				log.Error(err, "cannot reload promxy config")
+				return ctrl.Result{}, err
+			}
 			continue
 		}
 		if err != nil {
@@ -146,6 +154,11 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		log.Info("Updating promxy config secret", "secretName", name)
 		if err := r.Update(ctx, secret); err != nil {
 			log.Error(err, "cannot update promxy secret")
+			return ctrl.Result{}, err
+		}
+		log.Info("Reloading promxy config")
+		if err := r.PromxyConfigReload(); err != nil {
+			log.Error(err, "cannot reload promxy config")
 			return ctrl.Result{}, err
 		}
 	}
