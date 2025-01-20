@@ -66,17 +66,6 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 
-	if len(promxyServerGroupsList.Items) == 0 {
-		log.Info("No promxy server groups left, deleting all generated promxy config secrets...")
-		if err := r.Client.DeleteAllOf(ctx, &coreV1.Secret{}, client.InNamespace(req.NamespacedName.Namespace), client.MatchingLabels{
-			"app.kubernetes.io/managed-by": "promxy-operator",
-		}); err != nil {
-			log.Error(err, "cannot delete promxy secrets created by operator")
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
-	}
-
 	promxyServerGroupsBySecretName := make(map[string][]*kofv1alpha1.PromxyServerGroup)
 
 	for _, promxyServerGroup := range promxyServerGroupsList.Items {

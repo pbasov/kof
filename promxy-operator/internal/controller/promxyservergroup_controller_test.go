@@ -113,22 +113,48 @@ var _ = Describe("PromxyServerGroup Controller", func() {
 		AfterEach(func() {
 			serverGroup := &kofv1alpha1.PromxyServerGroup{}
 			err := k8sClient.Get(ctx, promxyServerGroupNamespacedName, serverGroup)
-			Expect(err).NotTo(HaveOccurred())
+			if err == nil {
+				By("Cleanup the PromxyServerGroup")
+				Expect(k8sClient.Delete(ctx, serverGroup)).To(Succeed())
+			}
 
 			credentialsSecret := &coreV1.Secret{}
 			err = k8sClient.Get(ctx, credentialsSecretNamespacesName, credentialsSecret)
-			Expect(err).NotTo(HaveOccurred())
+			if err == nil {
+				By("Cleanup the Credentials Secret")
+				Expect(k8sClient.Delete(ctx, credentialsSecret)).To(Succeed())
+			}
 
 			promxySecret := &coreV1.Secret{}
 			err = k8sClient.Get(ctx, promxySecretNamespacedName, promxySecret)
+			if err == nil {
+				By("Cleanup the Promxy Secret")
+				Expect(k8sClient.Delete(ctx, promxySecret)).To(Succeed())
+			}
+
+		})
+
+		It("should successfully reconcile the resource if deleted", func() {
+			By("Reconciling the deleted resource")
+			serverGroup := &kofv1alpha1.PromxyServerGroup{}
+			err := k8sClient.Get(ctx, promxyServerGroupNamespacedName, serverGroup)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(k8sClient.Delete(ctx, serverGroup)).To(Succeed())
+			controllerReconciler := &PromxyServerGroupReconciler{
+				Client:         k8sClient,
+				Scheme:         k8sClient.Scheme(),
+				RemoteWriteUrl: "http://storage/write",
+			}
+
+			_, err = controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: promxyServerGroupNamespacedName,
+			})
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Cleanup the PromxyServerGroup")
-			Expect(k8sClient.Delete(ctx, serverGroup)).To(Succeed())
-			By("Cleanup the Credentials Secret")
-			Expect(k8sClient.Delete(ctx, credentialsSecret)).To(Succeed())
-			By("Cleanup the Promxy Secret")
-			Expect(k8sClient.Delete(ctx, promxySecret)).To(Succeed())
+			secret := &coreV1.Secret{}
+			err = k8sClient.Get(ctx, promxySecretNamespacedName, secret)
+			Expect(errors.IsNotFound(err)).To(BeTrue())
+
 		})
 
 		It("should successfully reconcile the resource", func() {
