@@ -76,15 +76,5 @@ promxy:
       memory: 128Mi
   extraArgs:
     log-level: "info"
-  secret: ""
   config:
     remoteWriteUrl: http://vminsert-cluster:8480/insert/0/prometheus/api/v1/write
-    serverGroups:
-      - clusterName: kcm0
-        targets:
-          - vmauth.kcm0.example.net:443
-        auth:
-          credentials_secret_name: storage-vmuser-credentials
-          username_key: "username"
-          password_key: "password"
-          create_secret: true

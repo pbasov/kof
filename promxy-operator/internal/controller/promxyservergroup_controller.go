@@ -135,10 +135,7 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 				Name:      name,
 				Namespace: req.Namespace,
 			}
-			secret.Labels = map[string]string{
-				"app.kubernetes.io/managed-by": "promxy-operator",
-			}
-			secret.Labels[SecretNameLabel] = name
+			setSecretOperatorLabels(secret)
 			secret.StringData = map[string]string{
 				"config.yaml": data,
 			}
@@ -153,6 +150,7 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			log.Error(err, "cannot get promxy secret")
 			return ctrl.Result{}, err
 		}
+		setSecretOperatorLabels(secret)
 		secret.StringData = map[string]string{
 			"config.yaml": data,
 		}
@@ -164,6 +162,12 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func setSecretOperatorLabels(secret *coreV1.Secret) {
+	secret.Labels = map[string]string{
+		"app.kubernetes.io/managed-by": "promxy-operator",
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.

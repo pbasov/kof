@@ -24,6 +24,7 @@ kcm:
       kof-storage-secrets:
         matchLabels:
           k0rdent.mirantis.com/kof-storage-secrets: "true"
+        create_secrets: true
         secrets:
           - storage-vmuser-credentials
 victoriametrics:
@@ -80,6 +81,20 @@ promxy:
     annotations: {}
     # If not set, generated using the fullname template
     name:
+  operator:
+    rbac:
+      create: true
+    image:
+      repository: ghcr.io/k0rdent/kof/promxy-operator-controller
+      tag: "latest"
+      pullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 100m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
   service:
     type: ClusterIP
     enabled: true
@@ -109,23 +124,5 @@ promxy:
       memory: 128Mi
   extraArgs:
     log-level: "info"
-  secret: ""
   config:
     remoteWriteUrl: http://vminsert-cluster:8480/insert/0/prometheus/api/v1/write
-    serverGroups:
-      - clusterName: storage0
-        targets:
-          - vmauth.storage0.example.net:443
-        auth:
-          credentials_secret_name: storage-vmuser-credentials
-          username_key: username
-          password_key: password
-          create_secret: true
-      - clusterName: storage1
-        targets:
-          - vmauth.storage1.example.net:443
-        auth:
-          credentials_secret_name: storage-vmuser-credentials
-          username_key: username
-          password_key: password
-          create_secret: true

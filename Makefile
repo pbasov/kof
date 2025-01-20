@@ -31,6 +31,9 @@ STORAGE_DOMAIN = $(USER)-storage.$(KOF_DNS)
 KOF_STORAGE_NAME = kof-storage
 KOF_STORAGE_NG = kof
 
+KIND_CLUSTER_NAME ?= kcm-dev
+
+
 dev:
 	mkdir -p dev
 
@@ -79,6 +82,11 @@ helm-push: helm-package
 		fi; \
 	done
 
+.PHONY: promxy-operator-docker-build
+promxy-operator-docker-build: ## Build promxy-operator controller docker image
+	cd promxy-operator && make docker-build
+	$(KIND) load docker-image promxy-operator-controller --name $(KIND_CLUSTER_NAME)
+
 .PHONY: dev-operators-deploy
 dev-operators-deploy: dev ## Deploy kof-operators helm chart to the K8s cluster specified in ~/.kube/config
 	cp -f $(TEMPLATES_DIR)/kof-operators/values.yaml dev/operators-values.yaml
@@ -102,15 +110,15 @@ dev-storage-deploy: dev ## Deploy kof-storage helm chart to the K8s cluster spec
 	$(HELM) upgrade -i $(KOF_STORAGE_NAME) ./charts/kof-storage --create-namespace -n $(KOF_STORAGE_NG) -f dev/storage-values.yaml
 
 .PHONY: dev-ms-deploy-aws
-dev-ms-deploy-aws: dev ## Deploy Mothership helm chart to the K8s cluster specified in ~/.kube/config for a remote storage cluster
+dev-ms-deploy-aws: dev promxy-operator-docker-build ## Deploy Mothership helm chart to the K8s cluster specified in ~/.kube/config for a remote storage cluster
 	cp -f $(TEMPLATES_DIR)/kof-mothership/values.yaml dev/mothership-values.yaml
 	@$(YQ) eval -i '.kcm.installTemplates = true' dev/mothership-values.yaml
 	@$(YQ) eval -i '.kcm.kof.clusterProfiles.kof-aws-dns-secrets = {"matchLabels": {"k0rdent.mirantis.com/kof-aws-dns-secrets": "true"}, "secrets": ["external-dns-aws-credentials"]}' dev/mothership-values.yaml
 	@$(YQ) eval -i '.grafana.logSources = [{"name": "$(USER)-aws-storage", "url": "https://vmauth.$(STORAGE_DOMAIN)/vls", "type": "victoriametrics-logs-datasource", "auth": {"credentials_secret_name": "storage-vmuser-credentials", "username_key": "username", "password_key": "password"}}]' dev/mothership-values.yaml
-	@$(YQ) eval -i '.promxy.config.serverGroups = [{"clusterName": "$(USER)-aws-storage", "targets": ["vmauth.$(STORAGE_DOMAIN):443"], "auth": {"credentials_secret_name": "storage-vmuser-credentials", "create_secret": true, "username_key": "username", "password_key": "password"}}]' dev/mothership-values.yaml
 
 	@$(YQ) eval -i '.kcm.kof.charts.collectors.version = "$(COLLECTORS_VERSION)"' dev/mothership-values.yaml
 	@$(YQ) eval -i '.kcm.kof.charts.storage.version = "$(STORAGE_VERSION)"' dev/mothership-values.yaml
+	@$(YQ) eval -i '.promxy.operator.image.repository= "promxy-operator-controller"' dev/mothership-values.yaml
 	@if [ "$(REGISTRY_REPO)" = "oci://127.0.0.1:$(REGISTRY_PORT)/charts" ]; then \
 		$(YQ) eval -i '.kcm.kof.repo.url = "oci://$(REGISTRY_NAME):5000/charts"' dev/mothership-values.yaml; \
 		$(YQ) eval -i '.kcm.kof.repo.insecure = true' dev/mothership-values.yaml; \
@@ -123,19 +131,21 @@ dev-ms-deploy-aws: dev ## Deploy Mothership helm chart to the K8s cluster specif
 .PHONY: dev-storage-deploy-aws
 dev-storage-deploy-aws: dev ## Deploy Regional Managed cluster using KCM
 	cp -f demo/cluster/aws-storage.yaml dev/aws-storage.yaml
-	@$(YQ) eval -i '.metadata.name = "$(USER)-aws-storage"' dev/aws-storage.yaml
-	@$(YQ) '.spec.serviceSpec.services[] | select(.name == "kof-storage") | .values' dev/aws-storage.yaml > dev/kof-storage-values.yaml
+	@$(YQ) eval -i '.metadata.name = "$(USER)-aws-storage"' dev/aws-storage.yaml # set the same name for both documents in yaml
+	@$(YQ) eval -i 'select(documentIndex == 1).spec.cluster_name = "$(USER)-aws-storage"' dev/aws-storage.yaml
+	@$(YQ) 'select(documentIndex == 0).spec.serviceSpec.services[] | select(.name == "kof-storage") | .values' dev/aws-storage.yaml > dev/kof-storage-values.yaml
 	@$(YQ) eval -i '.["cert-manager"].email = "$(USER_EMAIL)"' dev/kof-storage-values.yaml
 	@$(YQ) eval -i '.victoriametrics.vmauth.ingress.host = "vmauth.$(STORAGE_DOMAIN)"' dev/kof-storage-values.yaml
 	@$(YQ) eval -i '.grafana.ingress.host = "grafana.$(STORAGE_DOMAIN)"' dev/kof-storage-values.yaml
 	@$(YQ) eval -i '.["external-dns"].enabled = true' dev/kof-storage-values.yaml
-	@$(YQ) eval -i '(.spec.serviceSpec.services[] | select(.name == "kof-storage")).values |= load_str("dev/kof-storage-values.yaml")' dev/aws-storage.yaml
+	@$(YQ) eval -i '(select(documentIndex == 0).spec.serviceSpec.services[] | select(.name == "kof-storage")).values |= load_str("dev/kof-storage-values.yaml")' dev/aws-storage.yaml
+	@$(YQ) eval -i 'select(documentIndex == 1).spec.targets = ["vmauth.$(STORAGE_DOMAIN):443"]' dev/aws-storage.yaml
 	kubectl apply -f dev/aws-storage.yaml
 
 .PHONY: dev-managed-deploy-aws
 dev-managed-deploy-aws: dev ## Deploy Regional Managed cluster using KCM
 	cp -f demo/cluster/aws-managed.yaml dev/aws-managed.yaml
-	@$(YQ) eval -i '.metadata.name = "$(MANAGED_CLUSTER_NAME)"' dev/aws-managed.yaml
+	@$(YQ) eval -i 'select(documentIndex == 0) | .metadata.name = "$(MANAGED_CLUSTER_NAME)"' dev/aws-managed.yaml
 	@$(YQ) '.spec.serviceSpec.services[] | select(.name == "kof-collectors") | .values' dev/aws-managed.yaml > dev/kof-managed-values.yaml
 	@$(YQ) eval -i '.global.clusterName = "$(MANAGED_CLUSTER_NAME)"' dev/kof-managed-values.yaml
 	@$(YQ) eval -i '.opencost.opencost.exporter.defaultClusterId = "$(MANAGED_CLUSTER_NAME)"' dev/kof-managed-values.yaml
@@ -159,11 +169,17 @@ export YQ
 ## Tool Versions
 HELM_VERSION ?= v3.15.1
 YQ_VERSION ?= v4.44.2
+KIND_VERSION ?= v0.23.0
 
 .PHONY: yq
 yq: $(YQ) ## Download yq locally if necessary.
 $(YQ): | $(LOCALBIN)
 	$(call go-install-tool,$(YQ),github.com/mikefarah/yq/v4,${YQ_VERSION})
+
+.PHONY: kind
+kind: $(KIND) ## Download kind locally if necessary.
+$(KIND): | $(LOCALBIN)
+	$(call go-install-tool,$(KIND),sigs.k8s.io/kind,${KIND_VERSION})
 
 .PHONY: helm
 helm: $(HELM) ## Download helm locally if necessary.
@@ -173,7 +189,7 @@ $(HELM): | $(LOCALBIN)
 	curl -s --fail $(HELM_INSTALL_SCRIPT) | USE_SUDO=false HELM_INSTALL_DIR=$(LOCALBIN) DESIRED_VERSION=$(HELM_VERSION) BINARY_NAME=helm-$(HELM_VERSION) PATH="$(LOCALBIN):$(PATH)" bash
 
 .PHONY: cli-install
-cli-install: yq helm ## Install the necessary CLI tools for deployment, development and testing.
+cli-install: yq helm kind ## Install the necessary CLI tools for deployment, development and testing.
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary (ideally with version)
