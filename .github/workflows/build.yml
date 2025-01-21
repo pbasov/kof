@@ -28,7 +28,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.vars.outputs.version }}
-      clustername: ${{ steps.vars.outputs.clustername }}
       pr: ${{ steps.pr.outputs.result }}
     permissions:
       packages: write

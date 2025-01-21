@@ -80,8 +80,8 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		groups, ok := promxyServerGroupsBySecretName[name]
 		if !ok {
 			groups = make([]*kofv1alpha1.PromxyServerGroup, 0)
-			groups = append(groups, &promxyServerGroup)
 		}
+		groups = append(groups, &promxyServerGroup)
 		promxyServerGroupsBySecretName[name] = groups
 	}
 
