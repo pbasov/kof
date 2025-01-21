@@ -61,7 +61,7 @@ spec:
           failureThreshold: 6
           httpGet:
             path: /healthz
-            port: http
+            port: operator-http
             scheme: HTTP
           periodSeconds: 5
           successThreshold: 1
@@ -70,14 +70,14 @@ spec:
           failureThreshold: 120
           httpGet:
             path: /readyz
-            port: http
+            port: operator-http
             scheme: HTTP
           periodSeconds: 5
           successThreshold: 1
           timeoutSeconds: 3
         ports:
         - containerPort: 8081
-          name: http
+          name: operator-http
         resources:
           {{- toYaml .Values.promxy.operator.resources | nindent 12 }}
       - name: promxy
