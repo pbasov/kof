@@ -1,20 +1,10 @@
-name: promxy-operator-build
+name: promxy-operator-release
 on:
-  pull_request_target:
-    types:
-      - labeled
-      - opened
-      - synchronize
-      - reopened
-    branches:
-      - main
-      - release-*
-    paths:
-      - "promxy-operator/**"
-      - "!**.md"
   push:
     tags:
       - "*"
+    branches:
+      - main
 
 env:
   GO_VERSION: "1.22"
@@ -28,24 +18,12 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.vars.outputs.version }}
-      pr: ${{ steps.pr.outputs.result }}
     permissions:
       packages: write
     steps:
-      - name: Get PR ref
-        uses: actions/github-script@v7
-        id: pr
-        with:
-          script: |
-            const { data: pullRequest } = await github.rest.pulls.get({
-              ...context.repo,
-              pull_number: context.payload.pull_request.number,
-            });
-            return pullRequest
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{fromJSON(steps.pr.outputs.result).merge_commit_sha}}
           fetch-depth: 0
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -68,7 +46,7 @@ jobs:
         id: vars
         run: |
           GIT_VERSION=$(git describe --tags --always)
-          echo "version=${GIT_VERSION:1}" >> $GITHUB_OUTPUT
+          echo "version=${GIT_VERSION}" >> $GITHUB_OUTPUT
       - name: Build and push
         uses: docker/build-push-action@v6
         if: github.repository == 'k0rdent/kof'
