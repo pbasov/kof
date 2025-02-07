@@ -8,7 +8,7 @@ metadata:
 spec:
   license: {}
   replicationFactor: {{ .Values.victoriametrics.vmcluster.replicationFactor | default 2 }}
-  retentionPeriod: "1"
+  retentionPeriod: {{ .Values.victoriametrics.vmcluster.retentionPeriod }}
   vminsert:
     extraArgs: {}
     image:
@@ -24,24 +24,30 @@ spec:
     port: "8481"
     replicaCount: {{ .Values.victoriametrics.vmcluster.replicaCount | default 3 }}
     resources: {}
+    # The vmselect component is responsible for executing queries and may use caching to improve performance.
+    # The storage size defined here is used to allocate space for caching query results.
+    # More details: https://docs.victoriametrics.com/cluster-victoriametrics/
     storage:
       volumeClaimTemplate:
         spec:
           resources:
             requests:
-              storage: 2Gi
+              storage: {{ .Values.victoriametrics.vmcluster.vmselect.storage.size }}
           storageClassName: {{ .Values.global.storageClass }}
   vmstorage:
     image:
       tag: v1.105.0-cluster
     replicaCount: {{ .Values.victoriametrics.vmcluster.replicaCount | default 3 }}
     resources: {}
+    # The vmstorage component is used for the long-term storage of raw time series data.
+    # The specified storage size should reflect the expected volume of data based on retention settings.
+    # More details: https://docs.victoriametrics.com/cluster-victoriametrics/
     storage:
       volumeClaimTemplate:
         spec:
           resources:
             requests:
-              storage: 10Gi
+              storage: {{ .Values.victoriametrics.vmcluster.vmstorage.storage.size }}
           storageClassName: {{ .Values.global.storageClass }}
     storageDataPath: /vm-data
 {{- end }}
