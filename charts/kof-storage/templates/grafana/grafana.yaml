@@ -15,6 +15,9 @@ spec:
       resources:
         requests:
           storage: 200Mi
+      {{- with .Values.global.storageClass }}
+      storageClassName: {{ . }}
+      {{- end }}
   deployment:
     spec:
       template:
