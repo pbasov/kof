@@ -22,7 +22,9 @@ import (
 
 	kcmv1alpha1 "github.com/K0rdent/kcm/api/v1alpha1"
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
-	v1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
+	cmmetav1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
+	istio "github.com/k0rdent/kof/kof-operator/internal/controller/isito"
+	remotesecret "github.com/k0rdent/kof/kof-operator/internal/controller/remote-secret"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,13 +34,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const istioCANamespace = "istio-system"
 const istioReleaseName = "kof-istio"
 
 // ClusterDeploymentReconciler reconciles a ClusterDeployment object
 type ClusterDeploymentReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme              *runtime.Scheme
+	RemoteSecretManager *remotesecret.RemoteSecretManager
 }
 
 // +kubebuilder:rbac:groups=k0rdent.mirantis.com,resources=clusterdeployments,verbs=get;list;watch;create;update;patch;delete
@@ -62,7 +64,25 @@ func (r *ClusterDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		Namespace: req.Namespace,
 	}, clusterDeployment); err != nil {
 		if errors.IsNotFound(err) {
-			// Put code to handle deletion case
+			if err := r.RemoteSecretManager.TryDelete(ctx, req); err != nil {
+				log.Error(err, "failed to delete remote secret")
+				return ctrl.Result{}, err
+			}
+
+			if err := r.Client.Delete(ctx, &cmv1.Certificate{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      getCertName(req.Name),
+					Namespace: istio.IstioSystemNamespace,
+				},
+			}); err != nil {
+				if errors.IsNotFound(err) {
+					log.Info("CA already deleted")
+					return ctrl.Result{}, nil
+				}
+				return ctrl.Result{}, err
+			}
+
+			log.Info("CA successfully deleted")
 			return ctrl.Result{}, nil
 		}
 		log.Error(err, "cannot read clusterDeployment")
@@ -72,6 +92,7 @@ func (r *ClusterDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	if clusterDeployment.Spec.Config == nil {
 		return ctrl.Result{}, nil
 	}
+
 	config, err := ReadClusterDeploymentConfig(clusterDeployment.Spec.Config.Raw)
 	if err != nil {
 		log.Error(err, "cannot read cluster config labels")
@@ -82,19 +103,25 @@ func (r *ClusterDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		if istioRole != "child" {
 			return ctrl.Result{}, nil
 		}
-		certName := fmt.Sprintf("kof-istio-%s-ca", clusterDeployment.Name)
+
+		if err := r.RemoteSecretManager.TryCreate(clusterDeployment, ctx, req); err != nil {
+			log.Error(err, "failed to create remote secret")
+			return ctrl.Result{}, err
+		}
+
+		certName := getCertName(clusterDeployment.Name)
 		cert := &cmv1.Certificate{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      certName,
-				Namespace: istioCANamespace,
+				Namespace: istio.IstioSystemNamespace,
 			},
 		}
 		if err := r.Get(ctx, types.NamespacedName{
 			Name:      certName,
-			Namespace: istioCANamespace,
+			Namespace: istio.IstioSystemNamespace,
 		}, cert); err != nil {
 			if !errors.IsNotFound(err) {
-				log.Error(err, "cannot read cluster config labels")
+				log.Error(err, "cannot read certificate", "name", certName, "namespace", istio.IstioSystemNamespace)
 				return ctrl.Result{}, err
 			}
 			cert.Labels = map[string]string{
@@ -111,7 +138,7 @@ func (r *ClusterDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 					Size:      256,
 				},
 				SecretName: certName,
-				IssuerRef: v1.ObjectReference{
+				IssuerRef: cmmetav1.ObjectReference{
 					Name:  fmt.Sprintf("%s-root", istioReleaseName),
 					Kind:  "Issuer",
 					Group: "cert-manager.io",
@@ -123,7 +150,6 @@ func (r *ClusterDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 				return ctrl.Result{}, err
 			}
 		}
-
 	}
 
 	return ctrl.Result{}, nil
@@ -134,4 +160,8 @@ func (r *ClusterDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&kcmv1alpha1.ClusterDeployment{}).
 		Complete(r)
+}
+
+func getCertName(clusterName string) string {
+	return fmt.Sprintf("kof-istio-%s-ca", clusterName)
 }

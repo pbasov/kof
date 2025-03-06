@@ -38,6 +38,8 @@ import (
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	kofv1alpha1 "github.com/k0rdent/kof/kof-operator/api/v1alpha1"
 	"github.com/k0rdent/kof/kof-operator/internal/controller"
+	remotesecret "github.com/k0rdent/kof/kof-operator/internal/controller/remote-secret"
+
 	// +kubebuilder:scaffold:imports
 	kcmv1alpha1 "github.com/K0rdent/kcm/api/v1alpha1"
 )
@@ -67,8 +69,18 @@ func main() {
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.StringVar(&remoteWriteUrl, "remote-write-url", "http://vminsert-cluster:8480/insert/0/prometheus/api/v1/write", "The promxy remote_write_url address")
-	flag.StringVar(&promxyReloadEnpoint, "promxy-reload-endpoint", "http://localhost:8082/-/reload", "The promxy config reload endpoint")
+	flag.StringVar(
+		&remoteWriteUrl,
+		"remote-write-url",
+		"http://vminsert-cluster:8480/insert/0/prometheus/api/v1/write",
+		"The promxy remote_write_url address",
+	)
+	flag.StringVar(
+		&promxyReloadEnpoint,
+		"promxy-reload-endpoint",
+		"http://localhost:8082/-/reload",
+		"The promxy config reload endpoint",
+	)
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
@@ -165,8 +177,9 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&controller.ClusterDeploymentReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:              mgr.GetClient(),
+		Scheme:              mgr.GetScheme(),
+		RemoteSecretManager: remotesecret.New(mgr.GetClient()),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ClusterDeployment")
 		os.Exit(1)
