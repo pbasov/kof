@@ -1,14 +1,14 @@
 apiVersion: k0rdent.mirantis.com/v1alpha1
 kind: ClusterDeployment
 metadata:
-  name: aws-ue2-istio-child
+  name: aws-ue2
   namespace: kcm-system
   labels:
     k0rdent.mirantis.com/istio-role: child
-    k0rdent.mirantis.com/kof-cluster-role: child
+    k0rdent.mirantis.com/kof-cluster-role: regional
 spec:
-  template: aws-standalone-cp-0-1-2
   credential: aws-cluster-identity-cred
+  template: aws-standalone-cp-0-1-2
   config:
     clusterIdentity:
       name: aws-cluster-identity

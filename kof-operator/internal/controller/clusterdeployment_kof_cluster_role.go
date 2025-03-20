@@ -88,7 +88,7 @@ func (r *ClusterDeploymentReconciler) reconcileChildClusterRole(
 		}, regionalClusterDeployment)
 		if err != nil {
 			log.Error(
-				err, "regional ClusterDeployment not found",
+				err, "cannot get regional ClusterDeployment",
 				"name", regionalClusterName,
 			)
 			return err
@@ -109,20 +109,31 @@ func (r *ClusterDeploymentReconciler) reconcileChildClusterRole(
 		regionalClusterName = regionalClusterDeployment.Name
 	}
 
-	regionalDomain, ok := regionalClusterDeployment.Labels[KofRegionalDomainLabel]
-	if !ok {
-		err := fmt.Errorf("regional domain not found")
-		log.Error(
-			err, "in",
-			"regionalClusterDeployment", regionalClusterName,
-			"label", KofRegionalDomainLabel,
-		)
-		return err
+	configData := map[string]string{
+		ClusterDeploymentGenerationKey: fmt.Sprintf("%d", childClusterDeployment.Generation),
+		RegionalClusterNameKey:         regionalClusterName,
 	}
 
-	if err := r.createProfile(ctx, childClusterDeployment, regionalClusterDeployment); err != nil {
-		log.Error(err, "Failed to create profile")
-		return err
+	regionalDomain, ok := regionalClusterDeployment.Labels[KofRegionalDomainLabel]
+	if !ok {
+		if _, isIstioChild := regionalClusterDeployment.Labels[IstioRoleLabel]; !isIstioChild {
+			err := fmt.Errorf("regional domain not found")
+			log.Error(
+				err, "in",
+				"regionalClusterDeployment", regionalClusterName,
+				"clusterLabel", KofRegionalDomainLabel,
+			)
+			return err
+		}
+	} else {
+		configData[RegionalDomainKey] = regionalDomain
+	}
+
+	if _, ok := childClusterDeployment.Labels[IstioRoleLabel]; ok {
+		if err := r.createProfile(ctx, childClusterDeployment, regionalClusterDeployment); err != nil {
+			log.Error(err, "Failed to create profile")
+			return err
+		}
 	}
 
 	ownerReference, err := GetOwnerReference(childClusterDeployment, r.Client)
@@ -194,7 +205,7 @@ func (r *ClusterDeploymentReconciler) createProfile(ctx context.Context, childCl
 
 	profile := &sveltosv1beta1.Profile{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      remoteSecretName,
+			Name:      istio.CopyRemoteSecretProfileName(childClusterDeployment.Name),
 			Namespace: childClusterDeployment.Namespace,
 			Labels: map[string]string{
 				"app.kubernetes.io/managed-by": "kof-operator",
@@ -235,7 +246,7 @@ func (r *ClusterDeploymentReconciler) createProfile(ctx context.Context, childCl
 
 	if err := r.Create(ctx, profile); err != nil {
 		if errors.IsAlreadyExists(err) {
-			log.Info("Profile is already created")
+			log.Info("Profile is already created", "profile", profile.Name)
 			return nil
 		}
 		return err
@@ -260,7 +271,7 @@ func (r *ClusterDeploymentReconciler) discoverRegionalClusterDeploymentByLocatio
 	childClusterDeploymentConfig, err := ReadClusterDeploymentConfig(
 		childClusterDeployment.Spec.Config.Raw,
 	)
-	if err != nil {
+	if err != nil || childClusterDeploymentConfig == nil {
 		log.Error(
 			err, "cannot read child ClusterDeployment config",
 			"name", childClusterDeployment.Name,
@@ -285,9 +296,7 @@ func (r *ClusterDeploymentReconciler) discoverRegionalClusterDeploymentByLocatio
 				continue
 			}
 
-			regionalClusterDeploymentConfig, err := ReadClusterDeploymentConfig(
-				regionalClusterDeployment.Spec.Config.Raw,
-			)
+			regionalClusterDeploymentConfig, err := ReadClusterDeploymentConfig(regionalClusterDeployment.Spec.Config.Raw)
 			if err != nil {
 				continue
 			}

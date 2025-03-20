@@ -103,7 +103,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 		}
 
 		profileDeploymentName := types.NamespacedName{
-			Name:      istio.RemoteSecretNameFromClusterName(regionalClusterDeploymentName),
+			Name:      istio.CopyRemoteSecretProfileName(childClusterDeploymentName),
 			Namespace: DEFAULT_NAMESPACE,
 		}
 
@@ -120,7 +120,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 					Labels:    labels,
 				},
 				Spec: kcmv1alpha1.ClusterDeploymentSpec{
-					Template: "aws-test-cluster-template",
+					Template: "aws-cluster-template",
 					Config:   &apiextensionsv1.JSON{Raw: []byte(`{"region": "us-east-2"}`)},
 				},
 			}
@@ -173,10 +173,16 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			}
 
 			By("creating regional ClusterDeployment")
-			createClusterDeployment(regionalClusterDeploymentName, regionalClusterDeploymentLabels)
+			createClusterDeployment(
+				regionalClusterDeploymentName,
+				regionalClusterDeploymentLabels,
+			)
 
 			By("creating child ClusterDeployment")
-			createClusterDeployment(childClusterDeploymentName, childClusterDeploymentLabels)
+			createClusterDeployment(
+				childClusterDeploymentName,
+				childClusterDeploymentLabels,
+			)
 
 			By("creating the fake Secret for the cluster deployment kubeconfig")
 			kubeconfigSecret := &corev1.Secret{}
@@ -301,7 +307,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, clusterDeployment)
 			Expect(err).NotTo(HaveOccurred())
 
-			clusterDeployment.Labels = map[string]string{}
+			clusterDeployment.ObjectMeta.Labels = nil
 
 			err = k8sClient.Update(ctx, clusterDeployment)
 			Expect(err).NotTo(HaveOccurred())
