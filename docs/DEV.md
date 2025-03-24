@@ -7,7 +7,6 @@
 ```bash
 git clone https://github.com/k0rdent/kcm.git
 cd kcm
-
 make cli-install
 make dev-apply
 ```
@@ -127,6 +126,8 @@ kubectl apply -f demo/aws-standalone-istio-child.yaml
 ```bash
 kubectl delete --wait --cascade=foreground -f dev/aws-standalone-child.yaml && \
 kubectl delete --wait --cascade=foreground -f dev/aws-standalone-regional.yaml && \
+kubectl delete --wait promxyservergroup -n kof -l app.kubernetes.io/managed-by=kof-operator && \
+kubectl delete --wait grafanadatasource -n kof -l app.kubernetes.io/managed-by=kof-operator && \
 helm uninstall --wait --cascade foreground -n kof kof-mothership && \
 helm uninstall --wait --cascade foreground -n kof kof-operators && \
 kubectl delete namespace kof --wait --cascade=foreground
@@ -139,7 +140,7 @@ cd ../kcm && make dev-destroy
 * For quick dev/test iterations, update the related `demo/cluster/` file to use:
   ```
     credential: adopted-cluster-cred
-    template: adopted-cluster-0-1-0
+    template: adopted-cluster-0-1-1
   ```
 
 * Run this to create the `adopted-cluster-cred`
@@ -148,7 +149,7 @@ cd ../kcm && make dev-destroy
   cd ../kcm
   kind create cluster -n adopted
   kubectl config use kind-kcm-dev
-  KUBECONFIG_DATA=$(kind get kubeconfig --internal -n adopted | base64) make dev-adopted-creds
+  KUBECONFIG_DATA=$(kind get kubeconfig --internal -n adopted | base64 -w 0) make dev-adopted-creds
   kubectl get clustertemplate -n kcm-system | grep adopted
   ```
 
