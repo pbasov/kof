@@ -25,8 +25,9 @@ import (
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	grafanav1beta1 "github.com/grafana/grafana-operator/v5/api/v1beta1"
 	kofv1alpha1 "github.com/k0rdent/kof/kof-operator/api/v1alpha1"
-	istio "github.com/k0rdent/kof/kof-operator/internal/controller/isito"
-	remotesecret "github.com/k0rdent/kof/kof-operator/internal/controller/remote-secret"
+	istio "github.com/k0rdent/kof/kof-operator/internal/controller/istio"
+	"github.com/k0rdent/kof/kof-operator/internal/controller/istio/cert"
+	remotesecret "github.com/k0rdent/kof/kof-operator/internal/controller/istio/remote-secret"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	sveltosv1beta1 "github.com/projectsveltos/addon-controller/api/v1beta1"
@@ -106,12 +107,12 @@ var _ = Describe("ClusterDeployment Controller", func() {
 		}
 
 		remoteSecretNamespacedName := types.NamespacedName{
-			Name:      istio.RemoteSecretNameFromClusterName(childClusterDeploymentName),
+			Name:      remotesecret.RemoteSecretNameFromClusterName(childClusterDeploymentName),
 			Namespace: istio.IstioSystemNamespace,
 		}
 
 		profileDeploymentName := types.NamespacedName{
-			Name:      istio.CopyRemoteSecretProfileName(childClusterDeploymentName),
+			Name:      remotesecret.CopyRemoteSecretProfileName(childClusterDeploymentName),
 			Namespace: defaultNamespace,
 		}
 
@@ -177,6 +178,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 				Client:              k8sClient,
 				Scheme:              k8sClient.Scheme(),
 				RemoteSecretManager: remotesecret.NewFakeManager(k8sClient),
+				IstioCertManager:    cert.New(k8sClient),
 			}
 
 			By(fmt.Sprintf("creating the %s namespace", istio.IstioSystemNamespace))
@@ -254,7 +256,6 @@ var _ = Describe("ClusterDeployment Controller", func() {
 		// test cases
 
 		It("should successfully reconcile the CA resource", func() {
-
 			By("Reconciling the created resource")
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: childClusterDeploymentNamespacedName,
