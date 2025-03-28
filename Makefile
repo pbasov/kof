@@ -19,6 +19,7 @@ REGISTRY_NAME ?= kof
 REGISTRY_PORT ?= 8080
 REGISTRY_REPO ?= http://127.0.0.1:$(REGISTRY_PORT)
 REGISTRY_IS_OCI = $(shell echo $(REGISTRY_REPO) | grep -q oci && echo true || echo false)
+REGISTRY_PLAIN_HTTP ?= false
 
 TEMPLATE_FOLDERS = $(patsubst $(TEMPLATES_DIR)/%,%,$(wildcard $(TEMPLATES_DIR)/*))
 
@@ -42,7 +43,6 @@ endef
 
 dev:
 	mkdir -p dev
-
 lint-chart-%:
 	$(HELM) dependency update $(TEMPLATES_DIR)/$*
 	$(HELM) lint --strict $(TEMPLATES_DIR)/$* --set global.lint=true
@@ -75,6 +75,10 @@ helm-push: helm-package
 	@if [ ! $(REGISTRY_IS_OCI) ]; then \
 	    repo_flag="--repo"; \
 	fi; \
+	if [ $(REGISTRY_PLAIN_HTTP) = "true" ]; \
+	then plain_http_flag="--plain-http"; \
+	else plain_http_flag=""; \
+	fi; \
 	for chart in $(CHARTS_PACKAGE_DIR)/*.tgz; do \
 		base=$$(basename $$chart .tgz); \
 		chart_version=$$(echo $$base | grep -o "v\{0,1\}[0-9]\+\.[0-9]\+\.[0-9].*"); \
@@ -90,7 +94,7 @@ helm-push: helm-package
 		fi; \
 		if $(REGISTRY_IS_OCI); then \
 			echo "Pushing $$chart to $(REGISTRY_REPO)"; \
-			$(HELM) push "$$chart" $(REGISTRY_REPO); \
+			$(HELM) push $${plain_http_flag} "$$chart" $(REGISTRY_REPO); \
 		else \
 			$(HELM) repo add kcm $(REGISTRY_REPO); \
 			echo "Pushing $$chart to $(REGISTRY_REPO)"; \
@@ -141,11 +145,15 @@ dev-ms-deploy: dev kof-operator-docker-build ## Deploy `kof-mothership` helm cha
 	cp -f $(TEMPLATES_DIR)/kof-mothership/values.yaml dev/mothership-values.yaml
 	@$(YQ) eval -i '.kcm.installTemplates = true' dev/mothership-values.yaml
 	@$(YQ) eval -i '.kcm.kof.clusterProfiles.kof-aws-dns-secrets = {"matchLabels": {"k0rdent.mirantis.com/kof-aws-dns-secrets": "true"}, "secrets": ["external-dns-aws-credentials"]}' dev/mothership-values.yaml
-
 	@$(YQ) eval -i '.kcm.kof.operator.image.repository = "kof-operator-controller"' dev/mothership-values.yaml
 	@$(call set_local_registry, "dev/mothership-values.yaml")
 	$(HELM) upgrade -i --wait --create-namespace -n kof kof-mothership ./charts/kof-mothership -f dev/mothership-values.yaml
-	kubectl rollout restart -n kof deployment/kof-mothership-kof-operator
+	$(KUBECTL) rollout restart -n kof deployment/kof-mothership-kof-operator
+	@while $(KUBECTL) get svctmpl -A -o yaml \
+		| $(YQ) '.items[].status.valid | select(. == false)' | grep -q . ; \
+	do $(KUBECTL) get svctmpl -A; sleep 5; done
+	$(HELM) upgrade -i --wait -n kof kof-regional ./charts/kof-regional
+	$(HELM) upgrade -i --wait -n kof kof-child ./charts/kof-child
 
 .PHONY: dev-regional-deploy-cloud
 dev-regional-deploy-cloud: dev ## Deploy regional cluster using k0rdent
