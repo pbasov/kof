@@ -17,3 +17,4 @@ spec:
     {{- $service := include "service" . | fromYaml }}
     service: {{.Values.collectors.k8scluster.service | mergeOverwrite $service | toYaml | nindent 6 }}
 {{- end }}
+
