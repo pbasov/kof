@@ -7,6 +7,7 @@
 {{- end }}
 
 {{- define "cluster_exporters" }}
+{{- if .kof.metrics.endpoint }}
 prometheusremotewrite:
   endpoint: {{ .kof.metrics.endpoint }}
   {{- include "kof-collectors.helper.tls_options" .kof.metrics | indent 2 }}
@@ -14,6 +15,8 @@ prometheusremotewrite:
   auth:
     authenticator: basicauth/metrics
   {{- end }}
+{{- end }}
+{{- if .kof.logs.endpoint }}
 otlphttp:
   {{- if .kof.basic_auth }}
   auth:
@@ -21,6 +24,7 @@ otlphttp:
   {{- end }}
   {{- include "kof-collectors.helper.tls_options" .kof.logs | indent 2 }}
   logs_endpoint: {{ .kof.logs.endpoint }}
+{{- end }}
 {{- end }}
 
 {{- define "node_receivers" }}
@@ -34,9 +38,12 @@ prometheus:
 {{- end }}
 
 {{- define "node_exporters" }}
+{{- if .kof.traces.endpoint }}
 otlphttp/traces:
   endpoint: {{ .kof.traces.endpoint }}
   {{- include "kof-collectors.helper.tls_options" .kof.traces | indent 2 }}
+{{- end }}
+{{- if .kof.metrics.endpoint }}
 prometheusremotewrite:
   endpoint: {{ .kof.metrics.endpoint }}
   {{- include "kof-collectors.helper.tls_options" .kof.metrics | indent 2 }}
@@ -44,6 +51,8 @@ prometheusremotewrite:
   auth:
     authenticator: basicauth/metrics
   {{- end }}
+{{- end }}
+{{- if .kof.logs.endpoint }}
 otlphttp/logs:
   {{- if .kof.basic_auth }}
   auth:
@@ -51,6 +60,7 @@ otlphttp/logs:
   {{- end }}
   logs_endpoint: {{ .kof.logs.endpoint }}
   {{- include "kof-collectors.helper.tls_options" .kof.logs | indent 2 }}
+{{- end }}
 {{- end }}
 
 {{- define "service" }}
