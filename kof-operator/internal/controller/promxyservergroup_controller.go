@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	kofv1alpha1 "github.com/k0rdent/kof/kof-operator/api/v1alpha1"
+	"github.com/k0rdent/kof/kof-operator/internal/controller/utils"
 )
 
 const PromxySecretNameLabel = "k0rdent.mirantis.com/promxy-secret-name"
@@ -121,7 +122,12 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			log.Error(err, "cannot render promxy secret template")
 			return ctrl.Result{}, err
 		}
-		secret := &coreV1.Secret{}
+		secret := &coreV1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      req.Name,
+				Namespace: req.Namespace,
+			},
+		}
 		err = r.Get(ctx, types.NamespacedName{
 			Name:      name,
 			Namespace: req.Namespace,
@@ -137,19 +143,19 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			}
 			log.Info("Creating promxy config secret", "secretName", name)
 			if err := r.Create(ctx, secret); err != nil {
-				log.Error(err, "cannot create promxy secret")
-				return ctrl.Result{}, err
+				utils.HandleError(ctx, "PromxySecretCreationFailed", "Cannot create promxy secret", secret, err, "promxySecretName", secret.Name)
+				return ctrl.Result{RequeueAfter: RequeueInterval}, err
 			}
 			log.Info("Reloading promxy config")
 			if err := r.PromxyConfigReload(); err != nil {
-				log.Error(err, "cannot reload promxy config")
-				return ctrl.Result{}, err
+				utils.HandleError(ctx, "PromxyConfigReloadingFailed", "Cannot reload promxy config", secret, err, "promxySecretName", secret.Name)
+				return ctrl.Result{RequeueAfter: RequeueInterval}, err
 			}
 			continue
 		}
 		if err != nil {
-			log.Error(err, "cannot get promxy secret")
-			return ctrl.Result{}, err
+			utils.HandleError(ctx, "PromxySecretNotFound", "Cannot get promxy secret", secret, err, "promxySecretName", secret.Name)
+			return ctrl.Result{RequeueAfter: RequeueInterval}, err
 		}
 		setSecretOperatorLabels(secret)
 		secret.StringData = map[string]string{
@@ -157,13 +163,13 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		}
 		log.Info("Updating promxy config secret", "secretName", name)
 		if err := r.Update(ctx, secret); err != nil {
-			log.Error(err, "cannot update promxy secret")
-			return ctrl.Result{}, err
+			utils.HandleError(ctx, "PromxySecretUpdateFailed", "Cannot update promxy secret", secret, err, "promxySecretName", secret.Name)
+			return ctrl.Result{RequeueAfter: RequeueInterval}, err
 		}
 		log.Info("Reloading promxy config")
 		if err := r.PromxyConfigReload(); err != nil {
-			log.Error(err, "cannot reload promxy config")
-			return ctrl.Result{}, err
+			utils.HandleError(ctx, "PromxySecretReloadFailed", "Cannot reload promxy config", secret, err, "promxySecretName", secret.Name)
+			return ctrl.Result{RequeueAfter: RequeueInterval}, err
 		}
 	}
 
@@ -171,7 +177,7 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 }
 
 func setSecretOperatorLabels(secret *coreV1.Secret) {
-	secret.Labels = map[string]string{ManagedByLabel: ManagedByValue}
+	secret.Labels = map[string]string{utils.ManagedByLabel: utils.ManagedByValue}
 }
 
 // SetupWithManager sets up the controller with the Manager.

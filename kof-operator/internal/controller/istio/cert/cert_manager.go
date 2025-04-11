@@ -9,6 +9,8 @@ import (
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	cmmetav1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	"github.com/k0rdent/kof/kof-operator/internal/controller/istio"
+	"github.com/k0rdent/kof/kof-operator/internal/controller/record"
+	"github.com/k0rdent/kof/kof-operator/internal/controller/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -33,11 +35,11 @@ func (cm *CertManager) TryCreate(ctx context.Context, clusterDeployment *kcmv1al
 	log.Info("Trying to create certificate")
 
 	cert := cm.generateClusterCACertificate(clusterDeployment)
-	return cm.createCertificate(ctx, cert)
+	return cm.createCertificate(ctx, cert, clusterDeployment)
 }
 
 func (cm *CertManager) TryDelete(ctx context.Context, req ctrl.Request) error {
-	certName := cm.getCertName(req.Name)
+	certName := GetCertName(req.Name)
 	log := log.FromContext(ctx)
 
 	log.Info("Trying to delete istio certificate", "certificateName", certName)
@@ -55,10 +57,11 @@ func (cm *CertManager) TryDelete(ctx context.Context, req ctrl.Request) error {
 	}
 
 	log.Info("Istio Certificate successfully deleted", "certificateName", certName)
+	cm.sendDeletionEvent(req)
 	return nil
 }
 
-func (cm *CertManager) createCertificate(ctx context.Context, cert *cmv1.Certificate) error {
+func (cm *CertManager) createCertificate(ctx context.Context, cert *cmv1.Certificate, clusterDeployment *kcmv1alpha1.ClusterDeployment) error {
 	log := log.FromContext(ctx)
 	log.Info("Creating Intermediate Istio CA certificate", "certificateName", cert.Name)
 
@@ -69,11 +72,12 @@ func (cm *CertManager) createCertificate(ctx context.Context, cert *cmv1.Certifi
 		}
 		return err
 	}
+	cm.sendCreationEvent(clusterDeployment)
 	return nil
 }
 
 func (cm *CertManager) generateClusterCACertificate(clusterDeployment *kcmv1alpha1.ClusterDeployment) *cmv1.Certificate {
-	certName := cm.getCertName(clusterDeployment.Name)
+	certName := GetCertName(clusterDeployment.Name)
 
 	return &cmv1.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
@@ -103,6 +107,27 @@ func (cm *CertManager) generateClusterCACertificate(clusterDeployment *kcmv1alph
 	}
 }
 
-func (cm *CertManager) getCertName(clusterName string) string {
+func (cm *CertManager) sendCreationEvent(cd *kcmv1alpha1.ClusterDeployment) {
+	record.Eventf(
+		cd,
+		utils.GetEventsAnnotations(cd),
+		"CertificateCreated",
+		"Istio certificate '%s' is successfully created",
+		GetCertName(cd.Name),
+	)
+}
+
+func (cm *CertManager) sendDeletionEvent(req ctrl.Request) {
+	cd := utils.GetClusterDeploymentStub(req.Name, req.Namespace)
+	record.Eventf(
+		cd,
+		nil,
+		"CertificateDeleted",
+		"Istio certificate '%s' is successfully deleted",
+		GetCertName(cd.Name),
+	)
+}
+
+func GetCertName(clusterName string) string {
 	return fmt.Sprintf("%s-%s-ca", istioReleaseName, clusterName)
 }

@@ -14,6 +14,8 @@ import (
 	kofv1alpha1 "github.com/k0rdent/kof/kof-operator/api/v1alpha1"
 	istio "github.com/k0rdent/kof/kof-operator/internal/controller/istio"
 	remotesecret "github.com/k0rdent/kof/kof-operator/internal/controller/istio/remote-secret"
+	"github.com/k0rdent/kof/kof-operator/internal/controller/record"
+	"github.com/k0rdent/kof/kof-operator/internal/controller/utils"
 	sveltosv1beta1 "github.com/projectsveltos/addon-controller/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -131,7 +133,7 @@ func (r *ClusterDeploymentReconciler) reconcileChildClusterRole(
 		regionalClusterName = regionalClusterDeployment.Name
 	}
 
-	ownerReference, err := GetOwnerReference(childClusterDeployment, r.Client)
+	ownerReference, err := utils.GetOwnerReference(childClusterDeployment, r.Client)
 	if err != nil {
 		log.Error(
 			err, "cannot get owner reference from child ClusterDeployment",
@@ -192,7 +194,7 @@ func (r *ClusterDeploymentReconciler) reconcileChildClusterRole(
 			Name:            configMapName,
 			Namespace:       childClusterDeployment.Namespace,
 			OwnerReferences: []metav1.OwnerReference{ownerReference},
-			Labels:          map[string]string{ManagedByLabel: ManagedByValue},
+			Labels:          map[string]string{utils.ManagedByLabel: utils.ManagedByValue},
 		},
 		Data: configData,
 	}
@@ -201,8 +203,25 @@ func (r *ClusterDeploymentReconciler) reconcileChildClusterRole(
 		"configMapName", configMap.Name,
 		"configMapData", configData,
 	}); err != nil {
+
+		record.Warnf(
+			regionalClusterDeployment,
+			utils.GetEventsAnnotations(regionalClusterDeployment),
+			"ConfigMapCreationFailed",
+			"Failed to create ConfigMap '%s': %v",
+			configMap.Name,
+			err,
+		)
 		return err
 	}
+
+	record.Eventf(
+		childClusterDeployment,
+		utils.GetEventsAnnotations(childClusterDeployment),
+		"ConfigMapCreated",
+		"ConfigMap '%s' is successfully created",
+		configMap.Name,
+	)
 
 	return nil
 }
@@ -213,7 +232,7 @@ func (r *ClusterDeploymentReconciler) createProfile(
 	childClusterDeployment, regionalClusterDeployment *kcmv1alpha1.ClusterDeployment,
 ) error {
 	log := log.FromContext(ctx)
-	remoteSecretName := remotesecret.RemoteSecretNameFromClusterName(regionalClusterDeployment.Name)
+	remoteSecretName := remotesecret.GetRemoteSecretName(regionalClusterDeployment.Name)
 
 	log.Info("Creating profile")
 
@@ -221,7 +240,7 @@ func (r *ClusterDeploymentReconciler) createProfile(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            remotesecret.CopyRemoteSecretProfileName(childClusterDeployment.Name),
 			Namespace:       childClusterDeployment.Namespace,
-			Labels:          map[string]string{ManagedByLabel: ManagedByValue},
+			Labels:          map[string]string{utils.ManagedByLabel: utils.ManagedByValue},
 			OwnerReferences: []metav1.OwnerReference{ownerReference},
 		},
 		Spec: sveltosv1beta1.Spec{
@@ -257,8 +276,24 @@ func (r *ClusterDeploymentReconciler) createProfile(
 	if err := r.createIfNotExists(ctx, profile, "Profile", []any{
 		"profileName", profile.Name,
 	}); err != nil {
+		record.Warnf(
+			regionalClusterDeployment,
+			utils.GetEventsAnnotations(regionalClusterDeployment),
+			"ProfileCreationFailed",
+			"Failed to create Profile '%s': %v",
+			profile.Name,
+			err,
+		)
 		return err
 	}
+
+	record.Eventf(
+		childClusterDeployment,
+		utils.GetEventsAnnotations(childClusterDeployment),
+		"ProfileCreated",
+		"Copy remote secret Profile '%s' is successfully created",
+		profile.Name,
+	)
 
 	return nil
 }
@@ -477,7 +512,7 @@ func (r *ClusterDeploymentReconciler) reconcileRegionalClusterRole(
 			Namespace: releaseNamespace,
 			// `OwnerReferences` is N/A because `regionalClusterDeployment` namespace differs.
 			Labels: map[string]string{
-				ManagedByLabel:        ManagedByValue,
+				utils.ManagedByLabel:  utils.ManagedByValue,
 				PromxySecretNameLabel: "kof-mothership-promxy-config",
 			},
 		},
@@ -501,15 +536,31 @@ func (r *ClusterDeploymentReconciler) reconcileRegionalClusterRole(
 	if err := r.createIfNotExists(ctx, promxyServerGroup, "PromxyServerGroup", []any{
 		"promxyServerGroupName", promxyServerGroup.Name,
 	}); err != nil {
+		record.Warnf(
+			regionalClusterDeployment,
+			utils.GetEventsAnnotations(regionalClusterDeployment),
+			"PromxySeverGroupCreationFailed",
+			"Failed to create PromxyServerGroup '%s': %v",
+			promxyServerGroup.Name,
+			err,
+		)
 		return err
 	}
+
+	record.Eventf(
+		regionalClusterDeployment,
+		utils.GetEventsAnnotations(regionalClusterDeployment),
+		"PromxyServerGroupCreated",
+		"PromxyServerGroup '%s' is successfully created",
+		promxyServerGroup.Name,
+	)
 
 	grafanaDatasource = &grafanav1beta1.GrafanaDatasource{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      grafanaDatasourceName,
 			Namespace: releaseNamespace,
 			// `OwnerReferences` is N/A because `regionalClusterDeployment` namespace differs.
-			Labels: map[string]string{ManagedByLabel: ManagedByValue},
+			Labels: map[string]string{utils.ManagedByLabel: utils.ManagedByValue},
 		},
 		Spec: grafanav1beta1.GrafanaDatasourceSpec{
 			GrafanaCommonSpec: grafanav1beta1.GrafanaCommonSpec{
@@ -523,8 +574,8 @@ func (r *ClusterDeploymentReconciler) reconcileRegionalClusterRole(
 				Type:      "victoriametrics-logs-datasource",
 				URL:       logsEndpoint,
 				Access:    "proxy",
-				IsDefault: BoolPtr(false),
-				BasicAuth: BoolPtr(!isIstio),
+				IsDefault: utils.BoolPtr(false),
+				BasicAuth: utils.BoolPtr(!isIstio),
 			},
 		},
 	}
@@ -562,8 +613,50 @@ func (r *ClusterDeploymentReconciler) reconcileRegionalClusterRole(
 	if err := r.createIfNotExists(ctx, grafanaDatasource, "GrafanaDatasource", []any{
 		"grafanaDatasourceName", grafanaDatasource.Name,
 	}); err != nil {
+		record.Warnf(
+			regionalClusterDeployment,
+			utils.GetEventsAnnotations(regionalClusterDeployment),
+			"GrafanaDatasourceCreationFailed",
+			"Failed to create GrafanaDatasource '%s': %v",
+			grafanaDatasource.Name,
+			err,
+		)
 		return err
 	}
 
+	record.Eventf(
+		regionalClusterDeployment,
+		utils.GetEventsAnnotations(regionalClusterDeployment),
+		"GrafanaDatasourceCreated",
+		"Grafana datasource '%s' is successfully created",
+		grafanaDatasource.Name,
+	)
+
+	return nil
+}
+
+func (r *ClusterDeploymentReconciler) createIfNotExists(
+	ctx context.Context,
+	object client.Object,
+	objectDescription string,
+	details []any,
+) error {
+	log := log.FromContext(ctx)
+
+	// `createOrUpdate` would need to read an old version and merge it with the new version
+	// to avoid `metadata.resourceVersion: Invalid value: 0x0: must be specified for an update`.
+	// As we have immutable specs for now, we will use `createIfNotExists` instead.
+
+	if err := r.Create(ctx, object); err != nil {
+		if errors.IsAlreadyExists(err) {
+			log.Info("Found existing "+objectDescription, details...)
+			return nil
+		}
+
+		log.Error(err, "cannot create "+objectDescription, details...)
+		return err
+	}
+
+	log.Info("Created "+objectDescription, details...)
 	return nil
 }
