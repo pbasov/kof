@@ -31,8 +31,8 @@ jobs:
           mkdir build
           for dir in charts/*
           do
-            yq '.dependencies[] | select(.repository | test("^https?://"))
-              | "helm repo add " + .name + " " + .repository' "$dir/Chart.yaml" | sh -x
+            yq '.dependencies | filter(.repository | test("^https?://"))
+              | map("helm repo add " + .name + " " + .repository)[]' "$dir/Chart.yaml" | sh
             helm dependency update "$dir"
 
             tag="${{ github.ref_name }}"  # git tag like "v0.2.0"
