@@ -28,7 +28,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	kofv1alpha1 "github.com/k0rdent/kof/kof-operator/api/v1alpha1"
+	kofv1beta1 "github.com/k0rdent/kof/kof-operator/api/v1beta1"
+	"github.com/k0rdent/kof/kof-operator/internal/controller/utils"
 )
 
 const PromxySecretNameLabel = "k0rdent.mirantis.com/promxy-secret-name"
@@ -59,7 +60,7 @@ type PromxyServerGroupReconciler struct {
 func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
-	promxyServerGroupsList := &kofv1alpha1.PromxyServerGroupList{}
+	promxyServerGroupsList := &kofv1beta1.PromxyServerGroupList{}
 	opts := []client.ListOption{
 		client.InNamespace(req.Namespace),
 	}
@@ -69,7 +70,7 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		return ctrl.Result{}, err
 	}
 
-	promxyServerGroupsBySecretName := make(map[string][]*kofv1alpha1.PromxyServerGroup)
+	promxyServerGroupsBySecretName := make(map[string][]*kofv1beta1.PromxyServerGroup)
 
 	for _, promxyServerGroup := range promxyServerGroupsList.Items {
 		name, ok := promxyServerGroup.Labels[PromxySecretNameLabel]
@@ -79,7 +80,7 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		}
 		groups, ok := promxyServerGroupsBySecretName[name]
 		if !ok {
-			groups = make([]*kofv1alpha1.PromxyServerGroup, 0)
+			groups = make([]*kofv1beta1.PromxyServerGroup, 0)
 		}
 		groups = append(groups, &promxyServerGroup)
 		promxyServerGroupsBySecretName[name] = groups
@@ -121,7 +122,12 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			log.Error(err, "cannot render promxy secret template")
 			return ctrl.Result{}, err
 		}
-		secret := &coreV1.Secret{}
+		secret := &coreV1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      req.Name,
+				Namespace: req.Namespace,
+			},
+		}
 		err = r.Get(ctx, types.NamespacedName{
 			Name:      name,
 			Namespace: req.Namespace,
@@ -137,18 +143,18 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 			}
 			log.Info("Creating promxy config secret", "secretName", name)
 			if err := r.Create(ctx, secret); err != nil {
-				log.Error(err, "cannot create promxy secret")
+				utils.HandleError(ctx, "PromxySecretCreationFailed", "Cannot create promxy secret", secret, err, "promxySecretName", secret.Name)
 				return ctrl.Result{}, err
 			}
 			log.Info("Reloading promxy config")
 			if err := r.PromxyConfigReload(); err != nil {
-				log.Error(err, "cannot reload promxy config")
+				utils.HandleError(ctx, "PromxyConfigReloadingFailed", "Cannot reload promxy config", secret, err, "promxySecretName", secret.Name)
 				return ctrl.Result{}, err
 			}
 			continue
 		}
 		if err != nil {
-			log.Error(err, "cannot get promxy secret")
+			utils.HandleError(ctx, "PromxySecretNotFound", "Cannot get promxy secret", secret, err, "promxySecretName", secret.Name)
 			return ctrl.Result{}, err
 		}
 		setSecretOperatorLabels(secret)
@@ -157,12 +163,12 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		}
 		log.Info("Updating promxy config secret", "secretName", name)
 		if err := r.Update(ctx, secret); err != nil {
-			log.Error(err, "cannot update promxy secret")
+			utils.HandleError(ctx, "PromxySecretUpdateFailed", "Cannot update promxy secret", secret, err, "promxySecretName", secret.Name)
 			return ctrl.Result{}, err
 		}
 		log.Info("Reloading promxy config")
 		if err := r.PromxyConfigReload(); err != nil {
-			log.Error(err, "cannot reload promxy config")
+			utils.HandleError(ctx, "PromxySecretReloadFailed", "Cannot reload promxy config", secret, err, "promxySecretName", secret.Name)
 			return ctrl.Result{}, err
 		}
 	}
@@ -171,12 +177,12 @@ func (r *PromxyServerGroupReconciler) Reconcile(ctx context.Context, req ctrl.Re
 }
 
 func setSecretOperatorLabels(secret *coreV1.Secret) {
-	secret.Labels = map[string]string{ManagedByLabel: ManagedByValue}
+	secret.Labels = map[string]string{utils.ManagedByLabel: utils.ManagedByValue}
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PromxyServerGroupReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&kofv1alpha1.PromxyServerGroup{}).
+		For(&kofv1beta1.PromxyServerGroup{}).
 		Complete(r)
 }

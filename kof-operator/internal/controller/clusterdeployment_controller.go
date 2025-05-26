@@ -18,10 +18,12 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
-	kcmv1alpha1 "github.com/K0rdent/kcm/api/v1alpha1"
+	kcmv1beta1 "github.com/K0rdent/kcm/api/v1beta1"
 	"github.com/k0rdent/kof/kof-operator/internal/controller/istio/cert"
 	remotesecret "github.com/k0rdent/kof/kof-operator/internal/controller/istio/remote-secret"
+	"github.com/k0rdent/kof/kof-operator/internal/controller/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -55,19 +57,31 @@ type ClusterDeploymentReconciler struct {
 func (r *ClusterDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 
-	clusterDeployment := &kcmv1alpha1.ClusterDeployment{}
+	clusterDeployment := utils.GetClusterDeploymentStub(req.Name, req.Namespace)
 	if err := r.Get(ctx, types.NamespacedName{
 		Name:      req.Name,
 		Namespace: req.Namespace,
 	}, clusterDeployment); err != nil {
 		if errors.IsNotFound(err) {
 			if err := r.RemoteSecretManager.TryDelete(ctx, req); err != nil {
-				log.Error(err, "failed to delete remote secret")
+				utils.HandleError(
+					ctx,
+					"SecretDeletionFailed",
+					fmt.Sprintf("Failed to delete remote secret '%s'", remotesecret.GetRemoteSecretName(req.Name)),
+					clusterDeployment,
+					err,
+				)
 				return ctrl.Result{}, err
 			}
 
 			if err := r.IstioCertManager.TryDelete(ctx, req); err != nil {
-				log.Error(err, "failed to delete istio certificate")
+				utils.HandleError(
+					ctx,
+					"IstioCertDeletionFailed",
+					fmt.Sprintf("Failed to delete istio certificate '%s'", cert.GetCertName(req.Name)),
+					clusterDeployment,
+					err,
+				)
 				return ctrl.Result{}, err
 			}
 
@@ -78,7 +92,6 @@ func (r *ClusterDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 	}
 
 	if err := r.ReconcileKofClusterRole(ctx, clusterDeployment); err != nil {
-		log.Error(err, "cannot reconcile kof-cluster-role label")
 		return ctrl.Result{}, err
 	}
 
@@ -88,12 +101,24 @@ func (r *ClusterDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 		}
 
 		if err := r.RemoteSecretManager.TryCreate(clusterDeployment, ctx, req); err != nil {
-			log.Error(err, "failed to create remote secret")
+			utils.HandleError(
+				ctx,
+				"SecretCreationFailed",
+				fmt.Sprintf("Failed to create remote secret '%s'", remotesecret.GetRemoteSecretName(req.Name)),
+				clusterDeployment,
+				err,
+			)
 			return ctrl.Result{}, err
 		}
 
 		if err := r.IstioCertManager.TryCreate(ctx, clusterDeployment); err != nil {
-			log.Error(err, "failed to create istio CA certificate")
+			utils.HandleError(
+				ctx,
+				"IstioCertCreationFailed",
+				fmt.Sprintf("Failed to create istio CA certificate '%s'", cert.GetCertName(req.Name)),
+				clusterDeployment,
+				err,
+			)
 			return ctrl.Result{}, err
 		}
 	}
@@ -104,6 +129,6 @@ func (r *ClusterDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Re
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&kcmv1alpha1.ClusterDeployment{}).
+		For(&kcmv1beta1.ClusterDeployment{}).
 		Complete(r)
 }

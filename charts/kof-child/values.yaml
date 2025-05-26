@@ -1,2 +1,7 @@
+cert-manager:
+  enabled: true
+
 kcm:
   namespace: kcm-system
+
+collectors: {}

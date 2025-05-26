@@ -1,4 +1,4 @@
-apiVersion: k0rdent.mirantis.com/v1alpha1
+apiVersion: k0rdent.mirantis.com/v1beta1
 kind: ClusterDeployment
 metadata:
   name: aws-ue2-child1
@@ -9,17 +9,27 @@ metadata:
     # Optional, auto-detected by region:
     # k0rdent.mirantis.com/kof-regional-cluster-name: aws-ue2
 spec:
-  template: aws-standalone-cp-0-1-6
+  template: aws-standalone-cp-0-2-1
   credential: aws-cluster-identity-cred
   config:
     clusterIdentity:
       name: aws-cluster-identity
       namespace: kcm-system
+
+    # Any custom values, e.g. https://github.com/opencost/opencost-helm-chart/blob/main/charts/opencost/README.md#values
+    # clusterAnnotations:
+    #   k0rdent.mirantis.com/kof-collectors-values: |
+    #     opencost:
+    #       opencost:
+    #         exporter:
+    #           replicas: 2
+
+    region: us-east-2
+
+    controlPlaneNumber: 1
     controlPlane:
       instanceType: t3.large
-    controlPlaneNumber: 1
-    publicIP: false
-    region: us-east-2
+
+    workersNumber: 3
     worker:
       instanceType: t3.small
-    workersNumber: 3

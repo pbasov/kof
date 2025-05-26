@@ -1,5 +1,0 @@
-{{- include "catalog.serviceTemplate" (dict
-  "templateChart" "ingress-nginx"
-  "templateVersion" "4.11.3"
-  "Values" .Values
-) }}

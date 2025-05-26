@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	kcmv1alpha1 "github.com/K0rdent/kcm/api/v1alpha1"
+	kcmv1beta1 "github.com/K0rdent/kcm/api/v1beta1"
 	"github.com/k0rdent/kof/kof-operator/internal/controller/istio"
+	"github.com/k0rdent/kof/kof-operator/internal/controller/record"
+	"github.com/k0rdent/kof/kof-operator/internal/controller/utils"
 	"istio.io/istio/istioctl/pkg/multicluster"
 	"istio.io/istio/pkg/kube"
 	corev1 "k8s.io/api/core/v1"
@@ -13,7 +15,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/clientcmd"
-	clusterapiv1beta1 "sigs.k8s.io/cluster-api/api/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -39,11 +40,12 @@ func (rs *RemoteSecretManager) TryDelete(ctx context.Context, request ctrl.Reque
 	if err := rs.deleteRemoteSecret(ctx, request); err != nil {
 		return fmt.Errorf("failed to delete remote secret: %v", err)
 	}
+	rs.sendDeletionEvent(request)
 	return nil
 }
 
 // Function handles the creation of a remote secret
-func (rs *RemoteSecretManager) TryCreate(clusterDeployment *kcmv1alpha1.ClusterDeployment, ctx context.Context, request ctrl.Request) error {
+func (rs *RemoteSecretManager) TryCreate(clusterDeployment *kcmv1beta1.ClusterDeployment, ctx context.Context, request ctrl.Request) error {
 	log := log.FromContext(ctx)
 	log.Info("Trying to create remote secret")
 
@@ -77,6 +79,7 @@ func (rs *RemoteSecretManager) TryCreate(clusterDeployment *kcmv1alpha1.ClusterD
 		return fmt.Errorf("failed to create remote secret: %v", err)
 	}
 
+	rs.sendCreationEvent(clusterDeployment)
 	log.Info("Remote secret successfully created")
 	return nil
 }
@@ -114,7 +117,7 @@ func (rs *RemoteSecretManager) isClusterDeploymentReady(conditions []metav1.Cond
 			return false
 		}
 
-		if condition.Type == string(clusterapiv1beta1.InfrastructureReadyCondition) {
+		if condition.Type == kcmv1beta1.CAPIClusterSummaryCondition {
 			infrastructureReady = condition.Status == metav1.ConditionTrue
 		}
 	}
@@ -130,7 +133,7 @@ func (rs *RemoteSecretManager) getFullSecretName(clusterName string) string {
 func (rs *RemoteSecretManager) remoteSecretExists(ctx context.Context, req ctrl.Request) (bool, error) {
 	secret := &corev1.Secret{}
 	if err := rs.client.Get(ctx, types.NamespacedName{
-		Name:      RemoteSecretNameFromClusterName(req.Name),
+		Name:      GetRemoteSecretName(req.Name),
 		Namespace: istio.IstioSystemNamespace,
 	}, secret); err != nil {
 		if errors.IsNotFound(err) {
@@ -157,7 +160,7 @@ func (rs *RemoteSecretManager) deleteRemoteSecret(ctx context.Context, req ctrl.
 
 	if err := rs.client.Delete(ctx, &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      RemoteSecretNameFromClusterName(req.Name),
+			Name:      GetRemoteSecretName(req.Name),
 			Namespace: istio.IstioSystemNamespace,
 		},
 	}); err != nil {
@@ -170,6 +173,27 @@ func (rs *RemoteSecretManager) deleteRemoteSecret(ctx context.Context, req ctrl.
 
 	log.Info("Remote secret successfully deleted")
 	return nil
+}
+
+func (rs *RemoteSecretManager) sendCreationEvent(cd *kcmv1beta1.ClusterDeployment) {
+	record.Eventf(
+		cd,
+		utils.GetEventsAnnotations(cd),
+		"SecretCreated",
+		"Istio remote secret '%s' is successfully created",
+		GetRemoteSecretName(cd.Name),
+	)
+}
+
+func (rs *RemoteSecretManager) sendDeletionEvent(req ctrl.Request) {
+	cd := utils.GetClusterDeploymentStub(req.Name, req.Namespace)
+	record.Eventf(
+		cd,
+		nil,
+		"SecretDeleted",
+		"Istio remote secret '%s' is successfully deleted",
+		GetRemoteSecretName(cd.Name),
+	)
 }
 
 type IstioRemoteSecretCreator struct{}

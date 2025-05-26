@@ -30,7 +30,8 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	kofv1alpha1 "github.com/k0rdent/kof/kof-operator/api/v1alpha1"
+	kofv1beta1 "github.com/k0rdent/kof/kof-operator/api/v1beta1"
+	"github.com/k0rdent/kof/kof-operator/internal/controller/utils"
 )
 
 var _ = Describe("PromxyServerGroup Controller", func() {
@@ -45,7 +46,7 @@ var _ = Describe("PromxyServerGroup Controller", func() {
 			Name:      promxyServerGroupName,
 			Namespace: "default",
 		}
-		promxyservergroup := &kofv1alpha1.PromxyServerGroup{}
+		promxyservergroup := &kofv1beta1.PromxyServerGroup{}
 
 		credentialsSecretNamespacesName := types.NamespacedName{
 			Name:      credentialsSecretName,
@@ -70,23 +71,23 @@ var _ = Describe("PromxyServerGroup Controller", func() {
 			By("creating the custom resource for the Kind PromxyServerGroup")
 			err := k8sClient.Get(ctx, promxyServerGroupNamespacedName, promxyservergroup)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &kofv1alpha1.PromxyServerGroup{
+				resource := &kofv1beta1.PromxyServerGroup{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      promxyServerGroupName,
 						Namespace: "default",
 						Labels:    make(map[string]string),
 					},
-					Spec: kofv1alpha1.PromxyServerGroupSpec{
+					Spec: kofv1beta1.PromxyServerGroupSpec{
 						ClusterName: "test-cluster",
 						Targets:     []string{"test.example.net:443"},
 						PathPrefix:  "/storage/source",
 						Scheme:      "https",
-						HttpClient: kofv1alpha1.HTTPClientConfig{
+						HttpClient: kofv1beta1.HTTPClientConfig{
 							DialTimeout: metav1.Duration{Duration: time.Second},
-							TLSConfig: kofv1alpha1.TLSConfig{
+							TLSConfig: kofv1beta1.TLSConfig{
 								InsecureSkipVerify: true,
 							},
-							BasicAuth: kofv1alpha1.BasicAuth{
+							BasicAuth: kofv1beta1.BasicAuth{
 								CredentialsSecretName: credentialsSecretName,
 								UsernameKey:           "username",
 								PasswordKey:           "password",
@@ -104,7 +105,7 @@ var _ = Describe("PromxyServerGroup Controller", func() {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      credentialsSecretName,
 						Namespace: "default",
-						Labels:    map[string]string{ManagedByLabel: ManagedByValue},
+						Labels:    map[string]string{utils.ManagedByLabel: utils.ManagedByValue},
 					},
 					StringData: map[string]string{
 						"username": "u",
@@ -117,7 +118,7 @@ var _ = Describe("PromxyServerGroup Controller", func() {
 		})
 
 		AfterEach(func() {
-			serverGroup := &kofv1alpha1.PromxyServerGroup{}
+			serverGroup := &kofv1beta1.PromxyServerGroup{}
 			err := k8sClient.Get(ctx, promxyServerGroupNamespacedName, serverGroup)
 			if err == nil {
 				By("Cleanup the PromxyServerGroup")
@@ -142,7 +143,7 @@ var _ = Describe("PromxyServerGroup Controller", func() {
 
 		It("should successfully reconcile the resource if deleted", func() {
 			By("Reconciling the deleted resource")
-			serverGroup := &kofv1alpha1.PromxyServerGroup{}
+			serverGroup := &kofv1beta1.PromxyServerGroup{}
 			err := k8sClient.Get(ctx, promxyServerGroupNamespacedName, serverGroup)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(k8sClient.Delete(ctx, serverGroup)).To(Succeed())
@@ -170,7 +171,7 @@ var _ = Describe("PromxyServerGroup Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			promxyConfig := string(secret.Data["config.yaml"])
-			promxyConfigYaml := make(map[string]interface{})
+			promxyConfigYaml := make(map[string]any)
 			Expect(promxyConfig).ToNot(BeNil())
 			Expect(yaml.Unmarshal([]byte(promxyConfig), promxyConfigYaml)).ToNot(HaveOccurred())
 			Expect("\n" + promxyConfig).To(Equal(`
@@ -201,12 +202,12 @@ promxy:
 		})
 
 		It("should successfully reconcile the resource without auth", func() {
-			resource := &kofv1alpha1.PromxyServerGroup{}
+			resource := &kofv1beta1.PromxyServerGroup{}
 			err := k8sClient.Get(ctx, promxyServerGroupNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 			resource.Spec.Targets = []string{"test.example.net:80"}
 			resource.Spec.Scheme = "http"
-			resource.Spec.HttpClient = kofv1alpha1.HTTPClientConfig{
+			resource.Spec.HttpClient = kofv1beta1.HTTPClientConfig{
 				DialTimeout: metav1.Duration{Duration: time.Second},
 			}
 			err = k8sClient.Update(ctx, resource)

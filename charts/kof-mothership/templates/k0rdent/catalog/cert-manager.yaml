@@ -1,5 +1,0 @@
-{{- include "catalog.serviceTemplate" (dict
-  "templateChart" "cert-manager"
-  "templateVersion" "1.16.2"
-  "Values" .Values
-) }}

@@ -30,15 +30,25 @@ CLOUD_CLUSTER_REGION ?= us-east-2
 CHILD_CLUSTER_NAME = $(USER)-$(CLOUD_CLUSTER_TEMPLATE)-child
 REGIONAL_CLUSTER_NAME = $(USER)-$(CLOUD_CLUSTER_TEMPLATE)-regional
 REGIONAL_DOMAIN = $(REGIONAL_CLUSTER_NAME).$(KOF_DNS)
-KOF_STORAGE_NAME = kof-storage
-KOF_STORAGE_NG = kof
 
 KIND_CLUSTER_NAME ?= kcm-dev
 
 define set_local_registry
 	$(eval $@_VALUES = $(1))
-	$(YQ) eval -i '.kcm.kof.repo.url = "http://$(REGISTRY_NAME):8080"' ${$@_VALUES}
-	$(YQ) eval -i '.kcm.kof.repo.type = "default"' ${$@_VALUES}
+	$(YQ) eval -i '.kcm.kof.repo.spec.url = "http://$(REGISTRY_NAME):8080"' ${$@_VALUES}
+	$(YQ) eval -i '.kcm.kof.repo.spec.type = "default"' ${$@_VALUES}
+endef
+
+define set_region
+	$(eval $@_VALUES = $(1))
+	if [[ "$(CLOUD_CLUSTER_TEMPLATE)" == aws-* ]]; \
+	then \
+		$(YQ) -i '.spec.config.region = "$(CLOUD_CLUSTER_REGION)"' ${$@_VALUES}; \
+	elif [[ "$(CLOUD_CLUSTER_TEMPLATE)" == azure-* ]]; \
+	then \
+		$(YQ) -i '.spec.config.location = "$(CLOUD_CLUSTER_REGION)"' ${$@_VALUES}; \
+		$(YQ) -i '.spec.config.subscriptionID = "'"$$AZURE_SUBSCRIPTION_ID"'"' ${$@_VALUES}; \
+	fi
 endef
 
 dev:
@@ -111,22 +121,17 @@ kof-operator-docker-build: ## Build kof-operator controller docker image
 
 .PHONY: dev-operators-deploy
 dev-operators-deploy: dev ## Deploy kof-operators helm chart to the K8s cluster specified in ~/.kube/config
-	cp -f $(TEMPLATES_DIR)/kof-operators/values.yaml dev/operators-values.yaml
-	$(HELM) upgrade -i --wait kof-operators ./charts/kof-operators --create-namespace -n kof -f dev/operators-values.yaml
+	$(HELM_UPGRADE) --create-namespace -n kof kof-operators ./charts/kof-operators
 
 .PHONY: dev-collectors-deploy
 dev-collectors-deploy: dev ## Deploy kof-collector helm chart to the K8s cluster specified in ~/.kube/config
-	cp -f $(TEMPLATES_DIR)/kof-collectors/values.yaml dev/collectors-values.yaml
-	@$(YQ) eval -i '.kof.logs.endpoint = "http://$(KOF_STORAGE_NAME)-victoria-logs-single-server.$(KOF_STORAGE_NG):9428/insert/opentelemetry/v1/logs"' dev/collectors-values.yaml
-	@$(YQ) eval -i '.kof.metrics.endpoint = "http://vminsert-cluster.$(KOF_STORAGE_NG):8480/insert/0/prometheus/api/v1/write"' dev/collectors-values.yaml
-	@$(YQ) eval -i '.opencost.opencost.prometheus.external.url = "http://vmselect-cluster.$(KOF_STORAGE_NG):8481/select/0/prometheus"' dev/collectors-values.yaml
-	$(HELM) upgrade -i --wait kof-collectors ./charts/kof-collectors --create-namespace -n kof -f dev/collectors-values.yaml
+	$(HELM_UPGRADE) -n kof kof-collectors ./charts/kof-collectors --set kcm.monitoring=true
 
 .PHONY: dev-istio-deploy
 dev-istio-deploy: dev ## Deploy kof-istio helm chart to the K8s cluster specified in ~/.kube/config
 	cp -f $(TEMPLATES_DIR)/kof-istio/values.yaml dev/istio-values.yaml
 	@$(call set_local_registry, "dev/istio-values.yaml")
-	$(HELM) upgrade -i --wait kof-istio ./charts/kof-istio --create-namespace -n istio-system -f dev/istio-values.yaml
+	$(HELM_UPGRADE) --create-namespace -n istio-system kof-istio ./charts/kof-istio -f dev/istio-values.yaml
 
 .PHONY: dev-storage-deploy
 dev-storage-deploy: dev ## Deploy kof-storage helm chart to the K8s cluster specified in ~/.kube/config
@@ -136,9 +141,7 @@ dev-storage-deploy: dev ## Deploy kof-storage helm chart to the K8s cluster spec
 	@$(YQ) eval -i '.victoria-metrics-operator.enabled = false' dev/storage-values.yaml
 	@$(YQ) eval -i '.victoriametrics.enabled = false' dev/storage-values.yaml
 	@$(YQ) eval -i '.promxy.enabled = true' dev/storage-values.yaml
-	@$(YQ) eval -i '.global.storageClass = "standard"' dev/storage-values.yaml
-	@$(YQ) eval -i '.["victoria-logs-single"].server.persistentVolume.storageClassName = "standard"' dev/storage-values.yaml
-	$(HELM) upgrade -i --wait $(KOF_STORAGE_NAME) ./charts/kof-storage --create-namespace -n $(KOF_STORAGE_NG) -f dev/storage-values.yaml
+	$(HELM_UPGRADE) -n kof kof-storage ./charts/kof-storage -f dev/storage-values.yaml
 
 .PHONY: dev-ms-deploy
 dev-ms-deploy: dev kof-operator-docker-build ## Deploy `kof-mothership` helm chart to the management cluster
@@ -147,30 +150,43 @@ dev-ms-deploy: dev kof-operator-docker-build ## Deploy `kof-mothership` helm cha
 	@$(YQ) eval -i '.kcm.kof.clusterProfiles.kof-aws-dns-secrets = {"matchLabels": {"k0rdent.mirantis.com/kof-aws-dns-secrets": "true"}, "secrets": ["external-dns-aws-credentials"]}' dev/mothership-values.yaml
 	@$(YQ) eval -i '.kcm.kof.operator.image.repository = "kof-operator-controller"' dev/mothership-values.yaml
 	@$(call set_local_registry, "dev/mothership-values.yaml")
-	$(HELM) upgrade -i --wait --create-namespace -n kof kof-mothership ./charts/kof-mothership -f dev/mothership-values.yaml
+	$(KUBECTL) apply -f ./kof-operator/config/crd/bases/k0rdent.mirantis.com_servicetemplates.yaml
+	$(KUBECTL) apply -f ./kof-operator/config/crd/bases/k0rdent.mirantis.com_multiclusterservices.yaml
+	$(KUBECTL) apply -f ./kof-operator/config/crd/bases/k0rdent.mirantis.com_clusterdeployments.yaml
+	$(KUBECTL) apply -f ./charts/kof-mothership/crds/kof.k0rdent.mirantis.com_promxyservergroups.yaml
+	$(HELM_UPGRADE) -n kof kof-mothership ./charts/kof-mothership -f dev/mothership-values.yaml
 	$(KUBECTL) rollout restart -n kof deployment/kof-mothership-kof-operator
-	@while $(KUBECTL) get svctmpl -A -o yaml \
-		| $(YQ) '.items[].status.valid | select(. == false)' | grep -q . ; \
-	do $(KUBECTL) get svctmpl -A; sleep 5; done
-	$(HELM) upgrade -i --wait -n kof kof-regional ./charts/kof-regional
-	$(HELM) upgrade -i --wait -n kof kof-child ./charts/kof-child
+	@svctmpls='cert-manager-1-16-4|ingress-nginx-4-12-1|kof-collectors-1-0-0|kof-operators-1-0-0|kof-storage-1-0-0'; \
+	for attempt in $$(seq 1 10); do \
+		if [ $$($(KUBECTL) get svctmpl -A | grep -E "$$svctmpls" | grep -c true) -eq 5 ]; then break; fi; \
+		echo "|Waiting for the next service templates to become VALID:|$$svctmpls|Found:" | tr "|" "\n"; \
+		$(KUBECTL) get svctmpl -A | grep -E "$$svctmpls"; \
+		sleep 5; \
+	done
+	$(HELM_UPGRADE) -n kof kof-regional ./charts/kof-regional
+	$(HELM_UPGRADE) -n kof kof-child ./charts/kof-child
+	@# Workaround for `no cached repo found` in ClusterSummary for non-OCI repos only,
+	@# like local `kof` HelmRepo created in kof-mothership after ClusterProfile in kof-istio:
+	@if $(KUBECTL) get deploy -n projectsveltos addon-controller; then \
+		$(KUBECTL) rollout restart -n projectsveltos deploy/addon-controller; \
+	fi
 
 .PHONY: dev-regional-deploy-cloud
 dev-regional-deploy-cloud: dev ## Deploy regional cluster using k0rdent
 	cp -f demo/cluster/$(CLOUD_CLUSTER_TEMPLATE)-regional.yaml dev/$(CLOUD_CLUSTER_TEMPLATE)-regional.yaml
 	@$(YQ) eval -i '.metadata.name = "$(REGIONAL_CLUSTER_NAME)"' dev/$(CLOUD_CLUSTER_TEMPLATE)-regional.yaml
-	@$(YQ) eval -i '.spec.config.region = "$(CLOUD_CLUSTER_REGION)"' dev/$(CLOUD_CLUSTER_TEMPLATE)-regional.yaml
 	@$(YQ) eval -i '.spec.config.clusterAnnotations["k0rdent.mirantis.com/kof-regional-domain"] = "$(REGIONAL_DOMAIN)"' dev/$(CLOUD_CLUSTER_TEMPLATE)-regional.yaml
 	@$(YQ) eval -i '.spec.config.clusterAnnotations["k0rdent.mirantis.com/kof-cert-email"] = "$(USER_EMAIL)"' dev/$(CLOUD_CLUSTER_TEMPLATE)-regional.yaml
+	@$(call set_region, "dev/$(CLOUD_CLUSTER_TEMPLATE)-regional.yaml")
 	kubectl apply -f dev/$(CLOUD_CLUSTER_TEMPLATE)-regional.yaml
 
 .PHONY: dev-child-deploy-cloud
 dev-child-deploy-cloud: dev ## Deploy child cluster using k0rdent
 	cp -f demo/cluster/$(CLOUD_CLUSTER_TEMPLATE)-child.yaml dev/$(CLOUD_CLUSTER_TEMPLATE)-child.yaml
 	@$(YQ) eval -i '.metadata.name = "$(CHILD_CLUSTER_NAME)"' dev/$(CLOUD_CLUSTER_TEMPLATE)-child.yaml
-	@$(YQ) eval -i '.spec.config.region = "$(CLOUD_CLUSTER_REGION)"' dev/$(CLOUD_CLUSTER_TEMPLATE)-child.yaml
 	@# Optional, auto-detected by region:
 	@# $(YQ) eval -i '.metadata.labels["k0rdent.mirantis.com/kof-regional-cluster-name"] = "$(REGIONAL_CLUSTER_NAME)"' dev/$(CLOUD_CLUSTER_TEMPLATE)-child.yaml
+	@$(call set_region, "dev/$(CLOUD_CLUSTER_TEMPLATE)-child.yaml")
 	kubectl apply -f dev/$(CLOUD_CLUSTER_TEMPLATE)-child.yaml
 
 ## Tool Binaries
@@ -179,7 +195,8 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen-$(CONTROLLER_TOOLS_VERSION)
 ENVTEST ?= $(LOCALBIN)/setup-envtest-$(ENVTEST_VERSION)
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
 HELM ?= $(LOCALBIN)/helm-$(HELM_VERSION)
-export HELM
+HELM_UPGRADE = $(HELM) upgrade -i --reset-values --wait
+export HELM HELM_UPGRADE
 KIND ?= $(LOCALBIN)/kind-$(KIND_VERSION)
 YQ ?= $(LOCALBIN)/yq-$(YQ_VERSION)
 export YQ

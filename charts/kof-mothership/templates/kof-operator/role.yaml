@@ -10,12 +10,14 @@ rules:
   resources:
   - configmaps
   - secrets
+  - events
   verbs:
   - create
   - delete
   - get
   - list
   - update
+  - patch
   - watch
 - apiGroups:
   - grafana.integreatly.org

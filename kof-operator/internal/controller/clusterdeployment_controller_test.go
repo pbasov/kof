@@ -18,16 +18,18 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
-	kcmv1alpha1 "github.com/K0rdent/kcm/api/v1alpha1"
+	kcmv1beta1 "github.com/K0rdent/kcm/api/v1beta1"
 	cmv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	grafanav1beta1 "github.com/grafana/grafana-operator/v5/api/v1beta1"
-	kofv1alpha1 "github.com/k0rdent/kof/kof-operator/api/v1alpha1"
+	kofv1beta1 "github.com/k0rdent/kof/kof-operator/api/v1beta1"
 	istio "github.com/k0rdent/kof/kof-operator/internal/controller/istio"
 	"github.com/k0rdent/kof/kof-operator/internal/controller/istio/cert"
 	remotesecret "github.com/k0rdent/kof/kof-operator/internal/controller/istio/remote-secret"
+	"github.com/k0rdent/kof/kof-operator/internal/controller/record"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	sveltosv1beta1 "github.com/projectsveltos/addon-controller/api/v1beta1"
@@ -36,7 +38,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	clusterapiv1beta1 "sigs.k8s.io/cluster-api/api/v1beta1"
+	k8srecord "k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -45,6 +47,7 @@ const releaseNamespace = "kof"
 
 var _ = Describe("ClusterDeployment Controller", func() {
 	Context("When reconciling a resource", func() {
+		record.DefaultRecorder = new(k8srecord.FakeRecorder)
 		ctx := context.Background()
 		var controllerReconciler *ClusterDeploymentReconciler
 
@@ -60,6 +63,8 @@ var _ = Describe("ClusterDeployment Controller", func() {
 		regionalClusterDeploymentLabels := map[string]string{
 			KofClusterRoleLabel: "regional",
 		}
+
+		regionalClusterDeploymentAnnotations := map[string]string{}
 
 		regionalClusterDeploymentConfig := fmt.Sprintf(`{
 			"region": "us-east-2",
@@ -80,6 +85,8 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			KofClusterRoleLabel:         "child",
 			KofRegionalClusterNameLabel: "test-regional",
 		}
+
+		childClusterDeploymentAnnotations := map[string]string{}
 
 		const childClusterDeploymentConfig = `{"region": "us-east-2"}`
 
@@ -107,7 +114,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 		}
 
 		remoteSecretNamespacedName := types.NamespacedName{
-			Name:      remotesecret.RemoteSecretNameFromClusterName(childClusterDeploymentName),
+			Name:      remotesecret.GetRemoteSecretName(childClusterDeploymentName),
 			Namespace: istio.IstioSystemNamespace,
 		}
 
@@ -121,32 +128,34 @@ var _ = Describe("ClusterDeployment Controller", func() {
 		createClusterDeployment := func(
 			name string,
 			labels map[string]string,
+			annotations map[string]string,
 			config string,
 		) {
-			clusterDeployment := &kcmv1alpha1.ClusterDeployment{
+			clusterDeployment := &kcmv1beta1.ClusterDeployment{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      name,
-					Namespace: defaultNamespace,
-					Labels:    labels,
+					Name:        name,
+					Namespace:   defaultNamespace,
+					Labels:      labels,
+					Annotations: annotations,
 				},
-				Spec: kcmv1alpha1.ClusterDeploymentSpec{
+				Spec: kcmv1beta1.ClusterDeploymentSpec{
 					Template: "aws-cluster-template",
 					Config:   &apiextensionsv1.JSON{Raw: []byte(config)},
 				},
 			}
 			Expect(k8sClient.Create(ctx, clusterDeployment)).To(Succeed())
 
-			clusterDeployment.Status = kcmv1alpha1.ClusterDeploymentStatus{
+			clusterDeployment.Status = kcmv1beta1.ClusterDeploymentStatus{
 				Conditions: []metav1.Condition{
 					{
-						Type:               kcmv1alpha1.ReadyCondition,
+						Type:               kcmv1beta1.ReadyCondition,
 						Status:             metav1.ConditionTrue,
 						LastTransitionTime: metav1.Time{Time: time.Now()},
 						Reason:             "ClusterReady",
 						Message:            "Cluster is ready",
 					},
 					{
-						Type:               string(clusterapiv1beta1.InfrastructureReadyCondition),
+						Type:               kcmv1beta1.CAPIClusterSummaryCondition,
 						Status:             metav1.ConditionTrue,
 						LastTransitionTime: metav1.Time{Time: time.Now()},
 						Reason:             "InfrastructureReady",
@@ -199,6 +208,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			createClusterDeployment(
 				regionalClusterDeploymentName,
 				regionalClusterDeploymentLabels,
+				regionalClusterDeploymentAnnotations,
 				regionalClusterDeploymentConfig,
 			)
 
@@ -206,6 +216,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			createClusterDeployment(
 				childClusterDeploymentName,
 				childClusterDeploymentLabels,
+				childClusterDeploymentAnnotations,
 				childClusterDeploymentConfig,
 			)
 
@@ -216,7 +227,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 		// after each test case
 
 		AfterEach(func() {
-			cd := &kcmv1alpha1.ClusterDeployment{}
+			cd := &kcmv1beta1.ClusterDeployment{}
 
 			if err := k8sClient.Get(ctx, regionalClusterDeploymentNamespacedName, cd); err == nil {
 				By("Cleanup regional ClusterDeployment")
@@ -270,7 +281,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 
 		It("should successfully reconcile the resource when deleted", func() {
 			By("Reconciling the deleted resource")
-			clusterDeployment := &kcmv1alpha1.ClusterDeployment{}
+			clusterDeployment := &kcmv1beta1.ClusterDeployment{}
 			err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, clusterDeployment)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(k8sClient.Delete(ctx, clusterDeployment)).To(Succeed())
@@ -287,12 +298,12 @@ var _ = Describe("ClusterDeployment Controller", func() {
 
 		It("should successfully reconcile the resource when not ready", func() {
 			By("Reconciling the not ready resource")
-			clusterDeployment := &kcmv1alpha1.ClusterDeployment{}
+			clusterDeployment := &kcmv1beta1.ClusterDeployment{}
 			err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, clusterDeployment)
 			Expect(err).NotTo(HaveOccurred())
 
 			for i := range clusterDeployment.Status.Conditions {
-				if clusterDeployment.Status.Conditions[i].Type == kcmv1alpha1.ReadyCondition {
+				if clusterDeployment.Status.Conditions[i].Type == kcmv1beta1.ReadyCondition {
 					clusterDeployment.Status.Conditions[i].Status = metav1.ConditionFalse
 					break
 				}
@@ -313,7 +324,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 
 		It("should successfully reconcile the resource if special label not provided", func() {
 			By("Reconciling the resource without labels")
-			clusterDeployment := &kcmv1alpha1.ClusterDeployment{}
+			clusterDeployment := &kcmv1beta1.ClusterDeployment{}
 			err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, clusterDeployment)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -334,7 +345,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 
 		It("should successfully reconcile when remote secret already exists", func() {
 			By("Reconciling the resource with existed remote secret")
-			clusterDeployment := &kcmv1alpha1.ClusterDeployment{}
+			clusterDeployment := &kcmv1beta1.ClusterDeployment{}
 			err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, clusterDeployment)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -355,7 +366,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 
 		It("should successfully reconcile after creating and deleting resource", func() {
 			By("Verifying resource reconciliation after creation and deletion")
-			cd := &kcmv1alpha1.ClusterDeployment{}
+			cd := &kcmv1beta1.ClusterDeployment{}
 			err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, cd)
 			Expect(err).NotTo(HaveOccurred())
 			cdUID := cd.GetUID()
@@ -388,7 +399,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			// and assume that Kubernetes garbage collection works:
 			// https://github.com/kubernetes-sigs/controller-runtime/issues/626#issuecomment-538529534
 			owner := configMap.OwnerReferences[0]
-			Expect(owner.APIVersion).To(Equal("k0rdent.mirantis.com/v1alpha1"))
+			Expect(owner.APIVersion).To(Equal("k0rdent.mirantis.com/v1beta1"))
 			Expect(owner.Kind).To(Equal("ClusterDeployment"))
 			Expect(owner.Name).To(Equal(childClusterDeploymentName))
 			Expect(owner.UID).To(Equal(cdUID))
@@ -396,7 +407,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			clusterDeployment := &kcmv1alpha1.ClusterDeployment{}
+			clusterDeployment := &kcmv1beta1.ClusterDeployment{}
 			err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, clusterDeployment)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -412,12 +423,14 @@ var _ = Describe("ClusterDeployment Controller", func() {
 
 		DescribeTable("should create PromxyServerGroup and GrafanaDatasource for regional cluster", func(
 			regionalClusterDeploymentLabels map[string]string,
+			regionalClusterDeploymentAnnotations map[string]string,
 			regionalClusterDeploymentConfig string,
 			expectedMetricsScheme string,
 			expectedMetricsTarget string,
 			expectedMetricsPathPrefix string,
-			expectedMetricsBasicAuth kofv1alpha1.BasicAuth,
+			expectedMetricsHttpConfig kofv1beta1.HTTPClientConfig,
 			expectedGrafanaDatasourceURL string,
+			expectedGrafanaDatasourceJsonData string,
 		) {
 			By("creating regional ClusterDeployment with labels and config from the table")
 			const regionalClusterDeploymentName = "test-regional-from-table"
@@ -443,11 +456,12 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			createClusterDeployment(
 				regionalClusterDeploymentName,
 				regionalClusterDeploymentLabels,
+				regionalClusterDeploymentAnnotations,
 				regionalClusterDeploymentConfig,
 			)
 
 			DeferCleanup(func() {
-				regionalClusterDeployment := &kcmv1alpha1.ClusterDeployment{}
+				regionalClusterDeployment := &kcmv1beta1.ClusterDeployment{}
 				if err := k8sClient.Get(ctx, regionalClusterDeploymentNamespacedName, regionalClusterDeployment); err == nil {
 					By("cleanup regional ClusterDeployment")
 					Expect(k8sClient.Delete(ctx, regionalClusterDeployment)).To(Succeed())
@@ -463,7 +477,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 					Expect(k8sClient.Delete(ctx, kubeconfigSecret)).To(Succeed())
 				}
 
-				promxyServerGroup := &kofv1alpha1.PromxyServerGroup{}
+				promxyServerGroup := &kofv1beta1.PromxyServerGroup{}
 				if err := k8sClient.Get(ctx, promxyServerGroupNamespacedName, promxyServerGroup); err == nil {
 					By("cleanup PromxyServerGroup")
 					Expect(k8sClient.Delete(ctx, promxyServerGroup)).To(Succeed())
@@ -483,19 +497,22 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			By("reading PromxyServerGroup")
-			promxyServerGroup := &kofv1alpha1.PromxyServerGroup{}
+			promxyServerGroup := &kofv1beta1.PromxyServerGroup{}
 			err = k8sClient.Get(ctx, promxyServerGroupNamespacedName, promxyServerGroup)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(promxyServerGroup.Spec.Scheme).To(Equal(expectedMetricsScheme))
 			Expect(promxyServerGroup.Spec.Targets).To(Equal([]string{expectedMetricsTarget}))
 			Expect(promxyServerGroup.Spec.PathPrefix).To(Equal(expectedMetricsPathPrefix))
-			Expect(promxyServerGroup.Spec.HttpClient.BasicAuth).To(Equal(expectedMetricsBasicAuth))
+			Expect(promxyServerGroup.Spec.HttpClient).To(Equal(expectedMetricsHttpConfig))
 
 			By("reading GrafanaDatasource")
 			grafanaDatasource := &grafanav1beta1.GrafanaDatasource{}
 			err = k8sClient.Get(ctx, grafanaDatasourceNamespacedName, grafanaDatasource)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(grafanaDatasource.Spec.Datasource.URL).To(Equal(expectedGrafanaDatasourceURL))
+			if expectedGrafanaDatasourceJsonData != "" {
+				Expect(grafanaDatasource.Spec.Datasource.JSONData).To(MatchJSON(json.RawMessage(expectedGrafanaDatasourceJsonData)))
+			}
 		},
 
 			/*
@@ -514,6 +531,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 			Entry(
 				"Default endpoints",
 				map[string]string{KofClusterRoleLabel: "regional"},
+				map[string]string{},
 				fmt.Sprintf(`{
 					"region": "us-east-2",
 					"clusterAnnotations": {"%s": "%s"}
@@ -523,12 +541,17 @@ var _ = Describe("ClusterDeployment Controller", func() {
 				"https",
 				"vmauth.test-aws-ue2.kof.example.com:443",
 				"/vm/select/0/prometheus",
-				kofv1alpha1.BasicAuth{
-					CredentialsSecretName: "storage-vmuser-credentials",
-					UsernameKey:           "username",
-					PasswordKey:           "password",
+				kofv1beta1.HTTPClientConfig{
+					DialTimeout: defaultDialTimeout,
+					TLSConfig: kofv1beta1.TLSConfig{
+						InsecureSkipVerify: false,
+					},
+					BasicAuth: kofv1beta1.BasicAuth{
+						CredentialsSecretName: "storage-vmuser-credentials",
+						UsernameKey:           "username",
+						PasswordKey:           "password"},
 				},
-				"https://vmauth.test-aws-ue2.kof.example.com/vls",
+				"https://vmauth.test-aws-ue2.kof.example.com/vls", "",
 			),
 
 			Entry(
@@ -537,17 +560,25 @@ var _ = Describe("ClusterDeployment Controller", func() {
 					KofClusterRoleLabel: "regional",
 					IstioRoleLabel:      "child",
 				},
+				map[string]string{},
 				`{"region": "us-east-2"}`,
 				"http",
 				"test-regional-from-table-vmselect:8481",
 				"/select/0/prometheus",
-				kofv1alpha1.BasicAuth{},
-				"http://test-regional-from-table-logs:9428",
+				kofv1beta1.HTTPClientConfig{
+					DialTimeout: defaultDialTimeout,
+					TLSConfig: kofv1beta1.TLSConfig{
+						InsecureSkipVerify: false,
+					},
+					BasicAuth: kofv1beta1.BasicAuth{},
+				},
+				"http://test-regional-from-table-logs-select:9471", "",
 			),
 
 			Entry(
-				"Custom endpoints",
+				"Custom endpoints with http config",
 				map[string]string{KofClusterRoleLabel: "regional"},
+				map[string]string{KofRegionalHTTPClientConfigAnnotation: `{"dial_timeout": "10s", "tls_config": {"insecure_skip_verify": true}}`},
 				fmt.Sprintf(`{
 					"region": "us-east-2",
 					"clusterAnnotations": {"%s": "%s", "%s": "%s"}
@@ -558,12 +589,18 @@ var _ = Describe("ClusterDeployment Controller", func() {
 				"https",
 				"vmauth.custom.example.com:443",
 				"/foo/prometheus",
-				kofv1alpha1.BasicAuth{
-					CredentialsSecretName: "storage-vmuser-credentials",
-					UsernameKey:           "username",
-					PasswordKey:           "password",
+				kofv1beta1.HTTPClientConfig{
+					DialTimeout: metav1.Duration{Duration: time.Second * 10},
+					TLSConfig: kofv1beta1.TLSConfig{
+						InsecureSkipVerify: true,
+					},
+					BasicAuth: kofv1beta1.BasicAuth{
+						CredentialsSecretName: "storage-vmuser-credentials",
+						UsernameKey:           "username",
+						PasswordKey:           "password",
+					},
 				},
-				"https://vmauth.custom.example.com/vls",
+				"https://vmauth.custom.example.com/vls", `{"tlsSkipVerify": true, "timeout": "10"}`,
 			),
 		)
 
@@ -586,7 +623,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 				"https://vmauth.test-aws-ue2.kof.example.com/vm/insert/0/prometheus/api/v1/write",
 			))
 			Expect(configMap.Data[WriteLogsKey]).To(Equal(
-				"https://vmauth.test-aws-ue2.kof.example.com/vls/insert/opentelemetry/v1/logs",
+				"https://vmauth.test-aws-ue2.kof.example.com/vli/insert/opentelemetry/v1/logs",
 			))
 			Expect(configMap.Data[WriteTracesKey]).To(Equal(
 				"https://jaeger.test-aws-ue2.kof.example.com/collector",
@@ -612,14 +649,17 @@ var _ = Describe("ClusterDeployment Controller", func() {
 				// Note no `KofRegionalClusterNameLabel` here, it will be auto-discovered!
 			}
 
+			childClusterDeploymentAnnotations := map[string]string{}
+
 			createClusterDeployment(
 				childClusterDeploymentName,
 				childClusterDeploymentLabels,
+				childClusterDeploymentAnnotations,
 				childClusterDeploymentConfig,
 			)
 
 			DeferCleanup(func() {
-				childClusterDeployment := &kcmv1alpha1.ClusterDeployment{}
+				childClusterDeployment := &kcmv1beta1.ClusterDeployment{}
 				if err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, childClusterDeployment); err == nil {
 					By("cleanup child ClusterDeployment")
 					Expect(k8sClient.Delete(ctx, childClusterDeployment)).To(Succeed())
@@ -647,7 +687,7 @@ var _ = Describe("ClusterDeployment Controller", func() {
 
 		It("should create profile", func() {
 			By("reading child ClusterDeployment")
-			clusterDeployment := &kcmv1alpha1.ClusterDeployment{}
+			clusterDeployment := &kcmv1beta1.ClusterDeployment{}
 			err := k8sClient.Get(ctx, childClusterDeploymentNamespacedName, clusterDeployment)
 			Expect(err).NotTo(HaveOccurred())
 
