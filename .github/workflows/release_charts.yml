@@ -7,6 +7,12 @@ on:
     tags:
       - "*"
 
+  workflow_dispatch:
+    inputs:
+      ref_name:
+        description: 'The git ref (branch, tag, or SHA) to checkout'
+        required: true
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -18,7 +24,8 @@ jobs:
     steps:
       - name: Checkout git repo
         uses: actions/checkout@v4
-        # Only a single commit is fetched by default, not whole tree.
+        with:
+          ref: ${{ github.event.inputs.ref_name }}
 
       - name: Install Helm
         uses: azure/setup-helm@v4
